@@ -1,0 +1,27 @@
+moderation_sidebar.sidebar:
+  path: '/moderation-sidebar/{entity_type}/{entity}'
+  defaults:
+    _controller: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::sideBar'
+    _title_callback: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::title'
+  requirements:
+    _permission: 'use moderation sidebar'
+    _entity_access: 'entity.view'
+    _custom_access: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::access'
+  options:
+    parameters:
+      entity:
+        type: entity:{entity_type}
+
+moderation_sidebar.sidebar_latest:
+  path: '/moderation-sidebar/{entity_type}/{entity}/latest'
+  defaults:
+    _controller: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::sideBarLatest'
+    _title_callback: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::title'
+  requirements:
+    _permission: 'use moderation sidebar'
+    _entity_access: 'entity.view'
+    _custom_access: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::access'
+  options:
+    parameters:
+      entity:
+        type: entity:{entity_type}

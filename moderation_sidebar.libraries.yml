@@ -1,0 +1,9 @@
+main:
+  version: VERSION
+  js:
+    js/moderation_sidebar.js: {}
+  css:
+    theme:
+      css/moderation_sidebar.css: {}
+  dependencies:
+    - outside_in/drupal.off_canvas

@@ -1,0 +1,49 @@
+.toolbar-bar .toolbar-icon-moderation-sidebar:before {
+  background-image: url(../images/icon.png);
+}
+
+.moderation-sidebar-actions {
+
+}
+
+.ui-dialog-offcanvas .moderation-sidebar-link,
+.ui-dialog-offcanvas .moderation-sidebar-link:visited,
+.ui-dialog-offcanvas .moderation-sidebar-link.button {
+  display: block;
+  margin: 0 0 8px 0;
+  padding: 10px 0 10px 0;
+  color: white;
+  border: 0;
+  border-radius: 2px;
+  text-align: center;
+}
+
+.ui-dialog-offcanvas .moderation-sidebar-link:hover {
+  color: white;
+}
+
+.ui-dialog-offcanvas .moderation-sidebar-link.button--danger {
+  background: #bd2727;
+}
+
+.ui-dialog-offcanvas .moderation-sidebar-link.button--danger:hover,
+.ui-dialog-offcanvas .moderation-sidebar-link.button--danger:focus {
+  background: #da2e2e;
+}
+
+.quick-moderation-form select {
+  width: 100%;
+  height: 30px;
+}
+
+.moderation-sidebar-info {
+  margin-bottom: 10px;
+}
+
+.ui-dialog-offcanvas .moderation-sidebar-info h2 {
+  font-size: 16px;
+}
+
+.ui-dialog-offcanvas .moderation-sidebar-info p {
+  margin-bottom: .5em;
+}

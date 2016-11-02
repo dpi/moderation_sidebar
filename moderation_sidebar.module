@@ -1,0 +1,85 @@
+<?php
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_toolbar().
+ */
+function moderation_sidebar_toolbar() {
+  $items = [];
+
+  /** @var \Drupal\Core\Routing\AdminContext $admin_context */
+  $admin_context = \Drupal::service('router.admin_context');
+  /** @var \Drupal\content_moderation\ModerationInformation $moderation_information */
+  $moderation_information = \Drupal::hasService('workbench_moderation.moderation_information') ? \Drupal::service('workbench_moderation.moderation_information') : \Drupal::service('content_moderation.moderation_information');
+
+  // Get the current Entity.
+  // @todo Support other entities. What's the generic way of doing this?
+  /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
+  $entity = \Drupal::routeMatch()->getParameter('node');
+  if ($entity instanceof EntityInterface && !$admin_context->isAdminRoute() && $moderation_information->isModeratedEntity($entity)) {
+    $params = [
+      'entity' => $entity->id(),
+      'entity_type' => $entity->getEntityTypeId(),
+    ];
+
+    // We maintain two separate routes depending on what context we're viewing
+    // the entity in.
+    if ($moderation_information->isLatestRevision($entity)) {
+      $url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
+    }
+    else {
+      $url = Url::fromRoute('moderation_sidebar.sidebar', $params);
+    }
+
+    $items['moderation_sidebar'] = [
+      '#type' => 'toolbar_item',
+      'tab' => [
+        '#type' => 'link',
+        '#title' => t('Moderate'),
+        '#url' => $url,
+        '#attributes' => [
+          'class' => [
+            'use-ajax',
+            'toolbar-icon',
+            'toolbar-icon-moderation-sidebar',
+          ],
+          'data-dialog-type' => 'dialog',
+          'data-dialog-renderer' => 'offcanvas',
+        ],
+      ],
+      '#attached' => [
+        'library' => [
+          'moderation_sidebar/main',
+        ],
+      ],
+      // @todo Can we set cache contexts based on the entity revision?
+      '#cache' => [
+        'max-age' => 0,
+      ],
+    ];
+  }
+
+  return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function moderation_sidebar_theme() {
+  return [
+    'moderation_sidebar_info' => [
+      'variables' => [
+        'title' => '',
+        'state' => '',
+        'revision_time' => NULL,
+        'revision_time_pretty' => NULL,
+        'revision_since' => NULL,
+        'revision_author' => NULL,
+        'revision_author_link' => NULL,
+        'revision_id' => NULL,
+      ],
+    ],
+  ];
+}
