@@ -117,13 +117,10 @@ class ModerationSidebarController extends ControllerBase {
         $date = date('m/d/Y - h:i A', $time);
         $time_pretty = $this->t('on @date', ['@date' => $date]);
       }
-      $user_link = $user->toLink()->toRenderable();
-      $user_link['#attributes']['target'] = '_blank';
-      $build['info']['#revision_author'] = $user->label();
-      $build['info']['#revision_author_link'] = $user_link;
+      $build['info']['#revision_author'] = $user->getDisplayName();
+      $build['info']['#revision_author_link'] = $user->toLink()->toRenderable();
       $build['info']['#revision_time'] = $time;
       $build['info']['#revision_time_pretty'] = $time_pretty;
-      $build['info']['#revision_id'] = $entity->getRevisionId();
     }
 
     $build['actions'] = [
