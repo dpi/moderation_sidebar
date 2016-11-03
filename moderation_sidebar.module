@@ -9,16 +9,28 @@ use Drupal\Core\Url;
 function moderation_sidebar_toolbar() {
   $items = [];
 
-  /** @var \Drupal\Core\Routing\AdminContext $admin_context */
-  $admin_context = \Drupal::service('router.admin_context');
-  /** @var \Drupal\content_moderation\ModerationInformation $moderation_information */
-  $moderation_information = \Drupal::hasService('workbench_moderation.moderation_information') ? \Drupal::service('workbench_moderation.moderation_information') : \Drupal::service('content_moderation.moderation_information');
-
   // Get the current Entity.
   // @todo Support other entities. What's the generic way of doing this?
   /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
   $entity = \Drupal::routeMatch()->getParameter('node');
-  if ($entity instanceof EntityInterface && !$admin_context->isAdminRoute() && $moderation_information->isModeratedEntity($entity)) {
+  if (!($entity instanceof EntityInterface)) {
+    return $items;
+  }
+
+  /** @var \Drupal\Core\Routing\AdminContext $admin_context */
+  $admin_context = \Drupal::service('router.admin_context');
+
+  /** @var \Drupal\content_moderation\ModerationInformation $moderation_information */
+  $moderation_information = \Drupal::hasService('workbench_moderation.moderation_information') ? \Drupal::service('workbench_moderation.moderation_information') : \Drupal::service('content_moderation.moderation_information');
+
+  if (method_exists($moderation_information, 'isModeratedEntity')) {
+    $is_moderated_entity = $moderation_information->isModeratedEntity($entity);
+  }
+  else {
+    $is_moderated_entity = $moderation_information->isModeratableEntity($entity);
+  }
+
+  if (!$admin_context->isAdminRoute() && $is_moderated_entity) {
     $params = [
       'entity' => $entity->id(),
       'entity_type' => $entity->getEntityTypeId(),

@@ -231,8 +231,13 @@ class ModerationSidebarController extends ControllerBase {
    *   Whether or not the route can be accessed.
    */
   public function access(ContentEntityInterface $entity) {
-    $is_moderated = $this->moderationInformation->isModeratedEntity($entity);
-    return AccessResultAllowed::allowedIf($is_moderated);
+    if (method_exists($this->moderationInformation, 'isModeratedEntity')) {
+      $is_moderated_entity = $this->moderationInformation->isModeratedEntity($entity);
+    }
+    else {
+      $is_moderated_entity = $this->moderationInformation->isModeratableEntity($entity);
+    }
+    return AccessResultAllowed::allowedIf($is_moderated_entity);
   }
 
 }
