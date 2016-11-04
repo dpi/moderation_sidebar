@@ -9,6 +9,13 @@ use Drupal\Core\Url;
 function moderation_sidebar_toolbar() {
   $items = [];
 
+  $items['moderation_sidebar'] = [
+    // @todo Can we set cache contexts based on the entity revision?
+    '#cache' => [
+      'max-age' => 0,
+    ],
+  ];
+
   // Get the current Entity.
   // @todo Support other entities. What's the generic way of doing this?
   /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
@@ -45,7 +52,7 @@ function moderation_sidebar_toolbar() {
       $url = Url::fromRoute('moderation_sidebar.sidebar', $params);
     }
 
-    $items['moderation_sidebar'] = [
+    $items['moderation_sidebar'] += [
       '#type' => 'toolbar_item',
       'tab' => [
         '#type' => 'link',
@@ -65,10 +72,6 @@ function moderation_sidebar_toolbar() {
         'library' => [
           'moderation_sidebar/main',
         ],
-      ],
-      // @todo Can we set cache contexts based on the entity revision?
-      '#cache' => [
-        'max-age' => 0,
       ],
     ];
   }
