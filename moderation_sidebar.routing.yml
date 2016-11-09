@@ -6,7 +6,6 @@ moderation_sidebar.sidebar:
   requirements:
     _permission: 'use moderation sidebar'
     _entity_access: 'entity.view'
-    _custom_access: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::access'
   options:
     parameters:
       entity:
@@ -20,7 +19,6 @@ moderation_sidebar.sidebar_latest:
   requirements:
     _permission: 'use moderation sidebar'
     _entity_access: 'entity.view'
-    _custom_access: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::access'
   options:
     parameters:
       entity:

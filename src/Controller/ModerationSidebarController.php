@@ -2,16 +2,19 @@
 
 namespace Drupal\moderation_sidebar\Controller;
 
-use Drupal\content_moderation\ModerationInformation;
-use Drupal\Core\Access\AccessResultAllowed;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Menu\LocalTaskManager;
+use Drupal\Core\Menu\LocalTaskManagerInterface;
+use Drupal\Core\Routing\CurrentRouteMatch;
 use Drupal\Core\Url;
 use Drupal\moderation_sidebar\Form\QuickTransitionForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -48,6 +51,13 @@ class ModerationSidebarController extends ControllerBase {
   protected $moduleHandler;
 
   /**
+   * The local task manager.
+   *
+   * @var \Drupal\Core\Menu\LocalTaskManagerInterface
+   */
+  protected $localTaskManager;
+
+  /**
    * Creates a ModerationSidebarController instance.
    *
    * @param \Drupal\content_moderation\ModerationInformation $moderation_information
@@ -57,13 +67,16 @@ class ModerationSidebarController extends ControllerBase {
    * @param \Drupal\Core\Datetime\DateFormatterInterface $date_formatter
    *   The date formatter service.
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
-   *   The module handler serivce.
+   *   The module handler service.
+   * @param \Drupal\Core\Menu\LocalTaskManagerInterface $local_task_manager
+   *   The local task manager.
    */
-  public function __construct($moderation_information, RequestStack $request_stack, DateFormatterInterface $date_formatter, ModuleHandlerInterface $module_handler) {
+  public function __construct($moderation_information, RequestStack $request_stack, DateFormatterInterface $date_formatter, ModuleHandlerInterface $module_handler, LocalTaskManagerInterface $local_task_manager) {
     $this->moderationInformation = $moderation_information;
     $this->request = $request_stack->getCurrentRequest();
     $this->dateFormatter = $date_formatter;
     $this->moduleHandler = $module_handler;
+    $this->localTaskManager = $local_task_manager;
   }
 
   /**
@@ -71,11 +84,44 @@ class ModerationSidebarController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     $moderation_info = $container->has('workbench_moderation.moderation_information') ? $container->get('workbench_moderation.moderation_information') : $container->get('content_moderation.moderation_information');
+
+    // We need an instance of LocalTaskManager that thinks we're viewing the
+    // entity. To accomplish this, we need to mock a request stack with a fake
+    // request. This looks crazy, but there is no other way to render
+    // Local Tasks for an arbitrary path without this.
+    /** @var \Symfony\Component\HttpFoundation\RequestStack $request_stack */
+    $request_stack = $container->get('request_stack');
+
+    /** @var EntityInterface $entity */
+    $entity = $request_stack->getCurrentRequest()->attributes->get('entity');
+    $fake_request_stack = new RequestStack();
+    $url = $entity->toUrl();
+    $request = Request::create($url->toString());
+
+    /** @var \Drupal\Core\Routing\AccessAwareRouter $router */
+    $router = $container->get('router');
+    $router->matchRequest($request);
+    $fake_request_stack->push($request);
+    $route_match = new CurrentRouteMatch($fake_request_stack);
+
+    $local_task_manager = new LocalTaskManager(
+      $container->get('controller_resolver'),
+      $fake_request_stack,
+      $route_match,
+      $container->get('router.route_provider'),
+      $container->get('module_handler'),
+      $container->get('cache.discovery'),
+      $container->get('language_manager'),
+      $container->get('access_manager'),
+      $container->get('current_user')
+    );
+
     return new static(
       $moderation_info,
-      $container->get('request_stack'),
+      $request_stack,
       $container->get('date.formatter'),
-      $container->get('module_handler')
+      $container->get('module_handler'),
+      $local_task_manager
     );
   }
 
@@ -97,11 +143,21 @@ class ModerationSidebarController extends ControllerBase {
     ];
 
     // Add information about this Entity to the top of the bar.
-    $state = $entity->moderation_state->entity;
+    if ($this->isModeratedEntity($entity)) {
+      $state = $entity->moderation_state->entity;
+      $state_label = $state->label();
+    }
+    else if ($entity->hasField('status')) {
+      $state_label = $entity->get('status') ? $this->t('Published') : $this->t('Unpublished');
+    }
+    else {
+      $state_label = $this->t('Published');
+    }
+
     $build['info'] = [
       '#theme' => 'moderation_sidebar_info',
       '#title' => $entity->label(),
-      '#state' => $state->label(),
+      '#state' => $state_label,
     ];
 
     if ($entity instanceof RevisionLogInterface) {
@@ -130,61 +186,66 @@ class ModerationSidebarController extends ControllerBase {
       ],
     ];
 
-    $entity_type_id = $entity->getEntityTypeId();
-    $is_latest = $this->moderationInformation->isLatestRevision($entity);
+    if ($this->isModeratedEntity($entity)) {
+      $entity_type_id = $entity->getEntityTypeId();
+      $is_latest = $this->moderationInformation->isLatestRevision($entity);
 
-    // If this revision is not the latest, provide a link to the latest entity.
-    if (!$is_latest) {
-      $build['actions']['view_latest'] = [
-        '#title' => $this->t('View existing draft'),
-        '#type' => 'link',
-        '#url' => Url::fromRoute("entity.{$entity_type_id}.latest_version", [
-          $entity_type_id => $entity->id(),
-        ]),
-        '#attributes' => [
-          'class' => ['moderation-sidebar-link', 'button'],
-        ],
-      ];
+      // If this revision is not the latest, provide a link to the latest entity.
+      if (!$is_latest) {
+        $build['actions']['view_latest'] = [
+          '#title' => $this->t('View existing draft'),
+          '#type' => 'link',
+          '#url' => Url::fromRoute("entity.{$entity_type_id}.latest_version", [
+            $entity_type_id => $entity->id(),
+          ]),
+          '#attributes' => [
+            'class' => ['moderation-sidebar-link', 'button'],
+          ],
+        ];
+      }
+
+      // Provide a link to the default display of the entity.
+      if (!$entity->isDefaultRevision()) {
+        $build['actions']['view_default'] = [
+          '#title' => $this->t('View live content'),
+          '#type' => 'link',
+          '#url' => $entity->toLink()->getUrl(),
+          '#attributes' => [
+            'class' => ['moderation-sidebar-link', 'button'],
+          ],
+        ];
+      }
+
+      // Show an edit link if this is the latest revision.
+      if ($is_latest && !$this->moderationInformation->isLiveRevision($entity)) {
+        $build['actions']['edit_draft'] = [
+          '#title' => $this->t('Edit draft'),
+          '#type' => 'link',
+          '#url' => $entity->toLink(NULL, 'edit-form')->getUrl(),
+          '#attributes' => [
+            'class' => ['moderation-sidebar-link', 'button'],
+          ],
+        ];
+      }
+
+      // Provide a list of actions representing transitions for this revision.
+      $build['actions']['quick_draft_form'] = $this->formBuilder()->getForm(QuickTransitionForm::class, $entity);
+
+      // Only show the entity delete action on the default revision.
+      if ($entity->isDefaultRevision()) {
+        $build['actions']['delete'] = [
+          '#title' => $this->t('Delete content'),
+          '#type' => 'link',
+          '#url' => $entity->toLink(NULL, 'delete-form')->getUrl(),
+          '#attributes' => [
+            'class' => ['moderation-sidebar-link', 'button', 'button--danger'],
+          ],
+        ];
+      }
     }
 
-    // Provide a link to the default display of the entity.
-    if (!$entity->isDefaultRevision()) {
-      $build['actions']['view_default'] = [
-        '#title' => $this->t('View live content'),
-        '#type' => 'link',
-        '#url' => $entity->toLink()->getUrl(),
-        '#attributes' => [
-          'class' => ['moderation-sidebar-link', 'button'],
-        ],
-      ];
-    }
-
-    // Show an edit link if this is the latest revision.
-    if ($is_latest && !$this->moderationInformation->isLiveRevision($entity)) {
-      $build['actions']['edit_draft'] = [
-        '#title' => $this->t('Edit draft'),
-        '#type' => 'link',
-        '#url' => $entity->toLink(NULL, 'edit-form')->getUrl(),
-        '#attributes' => [
-          'class' => ['moderation-sidebar-link', 'button'],
-        ],
-      ];
-    }
-
-    // Provide a list of actions representing transitions for this revision.
-    $build['actions']['quick_draft_form'] = $this->formBuilder()->getForm(QuickTransitionForm::class, $entity);
-
-    // Only show the entity delete action on the default revision.
-    if ($entity->isDefaultRevision()) {
-      $build['actions']['delete'] = [
-        '#title' => $this->t('Delete content'),
-        '#type' => 'link',
-        '#url' => $entity->toLink(NULL, 'delete-form')->getUrl(),
-        '#attributes' => [
-          'class' => ['moderation-sidebar-link', 'button', 'button--danger'],
-        ],
-      ];
-    }
+    // Add a list of (non duplicated) local tasks.
+    $build['actions'] += $this->getLocalTasks($entity);
 
     // Allow other module to alter our build.
     $this->moduleHandler->alter('moderation_sidebar', $build, $entity);
@@ -222,22 +283,53 @@ class ModerationSidebarController extends ControllerBase {
   }
 
   /**
-   * Performs custom access checks for Moderation Sidebar routes.
+   * Checks if a given Entity is moderated.
    *
    * @param \Drupal\Core\Entity\ContentEntityInterface $entity
-   *    A moderated entity.
+   *    An entity.
    *
    * @return bool
-   *   Whether or not the route can be accessed.
+   *   Whether or not the entity is moderated.
    */
-  public function access(ContentEntityInterface $entity) {
+  protected function isModeratedEntity(ContentEntityInterface $entity) {
     if (method_exists($this->moderationInformation, 'isModeratedEntity')) {
       $is_moderated_entity = $this->moderationInformation->isModeratedEntity($entity);
     }
     else {
       $is_moderated_entity = $this->moderationInformation->isModeratableEntity($entity);
     }
-    return AccessResultAllowed::allowedIf($is_moderated_entity);
+    return $is_moderated_entity;
+  }
+
+  /**
+   * Gathers a list of non-duplicated tasks, themed like our other buttons.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   An entity.
+   *
+   * @return array
+   *   A render array representing local tasks for this entity.
+   */
+  protected function getLocalTasks(ContentEntityInterface $entity) {
+    $tasks = $this->localTaskManager->getLocalTasks("entity.{$entity->getEntityTypeId()}.canonical", 0);
+    $tabs = [];
+    if (isset($tasks['tabs']) && !empty($tasks['tabs'])) {
+      foreach ($tasks['tabs'] as $name => $tab) {
+        // If this is a moderated node, we provide buttons for certain actions.
+        $duplicated_tab = preg_match('/^.*(canonical|edit_form|delete_form|latest_version_tab)$/', $name);
+        if (!$this->isModeratedEntity($entity) || !$duplicated_tab) {
+          $tabs[$name] = [
+            '#title' => $this->t($tab['#link']['title']),
+            '#type' => 'link',
+            '#url' => $tab['#link']['url'],
+            '#attributes' => [
+              'class' => ['moderation-sidebar-link', 'button'],
+            ],
+          ];
+        }
+      }
+    }
+    return $tabs;
   }
 
 }

@@ -1,6 +1,6 @@
 <?php
 
-use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Url;
 
 /**
@@ -16,65 +16,56 @@ function moderation_sidebar_toolbar() {
     ],
   ];
 
-  // Get the current Entity.
+  /** @var \Drupal\Core\Routing\AdminContext $admin_context */
+  $admin_context = \Drupal::service('router.admin_context');
+
   // @todo Support other entities. What's the generic way of doing this?
   /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
   $entity = \Drupal::routeMatch()->getParameter('node');
-  if (!($entity instanceof EntityInterface)) {
+
+  if (!($entity instanceof ContentEntityInterface) || $admin_context->isAdminRoute()) {
     return $items;
   }
-
-  /** @var \Drupal\Core\Routing\AdminContext $admin_context */
-  $admin_context = \Drupal::service('router.admin_context');
 
   /** @var \Drupal\content_moderation\ModerationInformation $moderation_information */
   $moderation_information = \Drupal::hasService('workbench_moderation.moderation_information') ? \Drupal::service('workbench_moderation.moderation_information') : \Drupal::service('content_moderation.moderation_information');
 
-  if (method_exists($moderation_information, 'isModeratedEntity')) {
-    $is_moderated_entity = $moderation_information->isModeratedEntity($entity);
+  $params = [
+    'entity' => $entity->id(),
+    'entity_type' => $entity->getEntityTypeId(),
+  ];
+
+  // We maintain two separate routes depending on what context we're viewing
+  // the entity in.
+  if ($moderation_information->isLatestRevision($entity)) {
+    $url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
   }
   else {
-    $is_moderated_entity = $moderation_information->isModeratableEntity($entity);
+    $url = Url::fromRoute('moderation_sidebar.sidebar', $params);
   }
 
-  if (!$admin_context->isAdminRoute() && $is_moderated_entity) {
-    $params = [
-      'entity' => $entity->id(),
-      'entity_type' => $entity->getEntityTypeId(),
-    ];
-
-    // We maintain two separate routes depending on what context we're viewing
-    // the entity in.
-    if ($moderation_information->isLatestRevision($entity)) {
-      $url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
-    }
-    else {
-      $url = Url::fromRoute('moderation_sidebar.sidebar', $params);
-    }
-
-    $items['moderation_sidebar'] += [
-      '#type' => 'toolbar_item',
-      'tab' => [
-        '#type' => 'link',
-        '#title' => t('Moderate'),
-        '#url' => $url,
-        '#attributes' => [
-          'class' => [
-            'use-ajax',
-            'toolbar-icon',
-            'toolbar-icon-moderation-sidebar',
-          ],
-          'data-dialog-type' => 'dialog',
-          'data-dialog-renderer' => 'offcanvas',
+  $items['moderation_sidebar'] += [
+    '#type' => 'toolbar_item',
+    'tab' => [
+      '#type' => 'link',
+      '#title' => t('Tasks'),
+      '#url' => $url,
+      '#attributes' => [
+        'class' => [
+          'use-ajax',
+          'toolbar-icon',
+          'toolbar-icon-moderation-sidebar',
         ],
+        'data-dialog-type' => 'dialog',
+        'data-dialog-renderer' => 'offcanvas',
       ],
-      '#attached' => [
-        'library' => [
-          'moderation_sidebar/main',
-        ],
+    ],
+    '#attached' => [
+      'library' => [
+        'moderation_sidebar/main',
       ],
-    ];
-  }
+    ],
+  ];
 
   return $items;
 }
