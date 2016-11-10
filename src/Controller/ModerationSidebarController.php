@@ -135,6 +135,10 @@ class ModerationSidebarController extends ControllerBase {
    *   The render array for the sidebar.
    */
   public function sideBar(ContentEntityInterface $entity) {
+    // Load the correct translation.
+    $language = $this->languageManager()->getCurrentLanguage();
+    $entity = $entity->getTranslation($language->getId());
+
     $build = [
       '#type' => 'container',
       '#attributes' => [
