@@ -233,7 +233,9 @@ class ModerationSidebarController extends ControllerBase {
       }
 
       // Provide a list of actions representing transitions for this revision.
-      $build['actions']['quick_draft_form'] = $this->formBuilder()->getForm(QuickTransitionForm::class, $entity);
+      if ($is_latest) {
+        $build['actions']['quick_draft_form'] = $this->formBuilder()->getForm(QuickTransitionForm::class, $entity);
+      }
 
       // Only show the entity delete action on the default revision.
       if ($entity->isDefaultRevision()) {
