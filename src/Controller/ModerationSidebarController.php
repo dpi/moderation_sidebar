@@ -160,7 +160,6 @@ class ModerationSidebarController extends ControllerBase {
 
     $build['info'] = [
       '#theme' => 'moderation_sidebar_info',
-      '#title' => $entity->label(),
       '#state' => $state_label,
     ];
 
@@ -283,9 +282,7 @@ class ModerationSidebarController extends ControllerBase {
    *   The title of the sidebar.
    */
   public function title(ContentEntityInterface $entity) {
-    $type = $bundle_entity = $this->entityTypeManager()->getStorage($entity->getEntityType()->getBundleEntityType())->load($entity->bundle());
-    $label = $type->label();
-    return $this->t('Moderate @label', ['@label' => $label]);
+    return $entity->label();
   }
 
   /**

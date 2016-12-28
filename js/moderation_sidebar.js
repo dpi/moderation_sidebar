@@ -20,6 +20,20 @@
         });
       }
     }
-  }
+  };
+
+  // Close the sidebar if the toolbar icon is clicked and moderation
+  // information is already available.
+  $('.toolbar-icon-moderation-sidebar').on('click', function (e) {
+    if ($('.moderation-sidebar-info').length) {
+      $('#drupal-offcanvas').dialog('close');
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      $(this).removeClass('sidebar-open');
+    }
+    else {
+      $(this).addClass('sidebar-open');
+    }
+  });
 
 })(jQuery, Drupal);

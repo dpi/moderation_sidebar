@@ -2,6 +2,14 @@
   background-image: url(../images/icon.png);
 }
 
+.toolbar-icon-moderation-sidebar.sidebar-open {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.25) 20%, transparent 200%);
+}
+
+.toolbar .toolbar-bar .toolbar-tab.moderation-sidebar-toolbar-tab {
+  float: right;
+}
+
 .moderation-sidebar-actions {
 
 }
@@ -10,7 +18,7 @@
 .ui-dialog-offcanvas .moderation-sidebar-link:visited,
 .ui-dialog-offcanvas .moderation-sidebar-link.button {
   display: block;
-  margin: 0 0 8px 0;
+  margin: 0 0 10px 0;
   padding: 10px 0 10px 0;
   color: white;
   border: 0;
@@ -37,13 +45,9 @@
 }
 
 .moderation-sidebar-info {
-  margin-bottom: 10px;
+  margin: 10px 0 20px 0;
 }
 
 .ui-dialog-offcanvas .moderation-sidebar-info h2 {
   font-size: 16px;
-}
-
-.ui-dialog-offcanvas .moderation-sidebar-info p {
-  margin-bottom: .5em;
 }
