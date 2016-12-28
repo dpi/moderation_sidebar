@@ -17,6 +17,10 @@
               $('.toolbar-icon-moderation-sidebar').click();
             }
           });
+          if (JSON.parse(localStorage.getItem('Drupal.moderation_sidebar.open'))) {
+            Drupal.behaviors.toggleEditMode.attach();
+            $('.toolbar-icon-moderation-sidebar').click();
+          }
         });
       }
     }
@@ -29,10 +33,21 @@
       $('#drupal-offcanvas').dialog('close');
       e.stopImmediatePropagation();
       e.preventDefault();
-      $(this).removeClass('sidebar-open');
     }
-    else {
-      $(this).addClass('sidebar-open');
+  });
+
+  $(window).on({
+    'dialog:beforecreate': function (event, dialog, $element, settings) {
+      if ($element.find('.moderation-sidebar-info')) {
+        $('.toolbar-icon-moderation-sidebar').addClass('sidebar-open');
+        localStorage.setItem('Drupal.moderation_sidebar.open', true);
+      }
+    },
+    'dialog:beforeclose': function (event, dialog, $element) {
+      if ($element.find('.moderation-sidebar-info')) {
+        $('.toolbar-icon-moderation-sidebar').removeClass('sidebar-open');
+        localStorage.setItem('Drupal.moderation_sidebar.open', false);
+      }
     }
   });
 
