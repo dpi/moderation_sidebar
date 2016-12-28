@@ -148,7 +148,7 @@ class ModerationSidebarController extends ControllerBase {
 
     // Add information about this Entity to the top of the bar.
     if ($this->isModeratedEntity($entity)) {
-      $state = $entity->moderation_state->entity;
+      $state = $this->getModerationState($entity);
       $state_label = $state->label();
     }
     else if ($entity->hasField('status')) {
@@ -289,10 +289,29 @@ class ModerationSidebarController extends ControllerBase {
   }
 
   /**
+   * Gets the Moderation State of a given Entity.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   An entity.
+   *
+   * @return \Drupal\workflows\StateInterface
+   */
+  protected function getModerationState(ContentEntityInterface $entity) {
+    if (method_exists($this->moderationInformation, 'getWorkFlowForEntity')) {
+      $state_id = $entity->moderation_state->get(0)->getValue()['value'];
+      $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
+      return $workflow->getState($state_id);
+    }
+    else {
+      return $entity->moderation_state->entity;
+    }
+  }
+
+  /**
    * Checks if a given Entity is moderated.
    *
    * @param \Drupal\Core\Entity\ContentEntityInterface $entity
-   *    An entity.
+   *   An entity.
    *
    * @return bool
    *   Whether or not the entity is moderated.

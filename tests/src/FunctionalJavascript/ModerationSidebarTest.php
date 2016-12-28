@@ -32,16 +32,14 @@ class ModerationSidebarTest extends JavascriptTestBase {
     parent::setUp();
 
     $this->container->get('module_installer')->install([self::$moderation_module, 'moderation_sidebar'], TRUE);
+    $this->resetAll();
 
     // Create a Content Type with moderation enabled.
     $node_type = $this->drupalCreateContentType(['type' => 'article', 'name' => 'Article']);
-    $node_type->setThirdPartySetting(self::$moderation_module, 'enabled', TRUE);
-    $node_type->setThirdPartySetting(self::$moderation_module, 'allowed_moderation_states', [
-      'published',
-      'draft',
-      'archived',
-    ]);
-    $node_type->setThirdPartySetting(self::$moderation_module, 'default_moderation_state', 'published');
+    /* @var \Drupal\workflows\WorkflowInterface $workflow */
+    $workflow = $this->container->get('entity_type.manager')->getStorage('workflow')->load('editorial');
+    $workflow->getTypePlugin()->addEntityTypeAndBundle('node', 'article');
+    $workflow->save();
     $node_type->setNewRevision(TRUE);
     $node_type->save();
 
@@ -55,10 +53,8 @@ class ModerationSidebarTest extends JavascriptTestBase {
       'delete any article content',
       'view any unpublished content',
       'view latest version',
-      'use draft_draft transition',
-      'use published_published transition',
-      'use draft_published transition',
-      'use published_draft transition',
+      'use editorial transition create_new_draft',
+      'use editorial transition publish',
     ]);
     $this->drupalLogin($user);
 
@@ -70,31 +66,34 @@ class ModerationSidebarTest extends JavascriptTestBase {
    */
   public function testModerationSidebar() {
     // Create a new article.
-    $node = $this->createNode(['type' => 'article']);
+    $node = $this->createNode([
+      'type' => 'article',
+      'moderation_state' => 'published',
+    ]);
     $this->drupalGet('node/' . $node->id());
 
     // Open the moderation sidebar.
-    $this->clickLink('Moderate');
+    $this->clickLink('Tasks');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // Archived transitions should not be visible based on our permissions.
     $this->assertSession()->elementNotExists('css', '.moderation-sidebar-link#published_archived');
     // Create a draft of the article.
-    $this->click('.moderation-sidebar-link#published_draft');
+    $this->submitForm([], 'Create New Draft');
     $this->assertSession()->addressEquals('node/' . $node->id() . '/latest');
 
     // Publish the draft.
-    $this->clickLink('Moderate');
+    $this->clickLink('Tasks');
     $this->assertSession()->assertWaitOnAjaxRequest();
     $this->assertSession()->pageTextNotContains('View existing draft');
-    $this->click('.moderation-sidebar-link#draft_published');
+    $this->submitForm([], 'Publish');
     $this->assertSession()->addressEquals('node/' . $node->id());
 
     // Create another draft, then discard it.
-    $this->clickLink('Moderate');
+    $this->clickLink('Tasks');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    $this->click('.moderation-sidebar-link#published_draft');
+    $this->submitForm([], 'Create New Draft');
     $this->assertSession()->addressEquals('node/' . $node->id() . '/latest');
-    $this->clickLink('Moderate');
+    $this->clickLink('Tasks');
     $this->assertSession()->assertWaitOnAjaxRequest();
     $this->click('#moderation-sidebar-discard-draft');
     $this->assertSession()->pageTextContains('The draft has been discarded successfully');

@@ -88,11 +88,16 @@ class QuickTransitionForm extends FormBase {
 
     // Exclude self-transitions.
     /** @var \Drupal\content_moderation\Entity\ModerationState $current_state */
-    $current_state = $entity->moderation_state->entity;
+    $current_state = $this->getModerationState($entity);
 
-    /** @var \Drupal\content_moderation\ModerationStateTransitionInterface[] $transitions */
+    /** @var \Drupal\workflows\TransitionInterface[] $transitions */
     $transitions = array_filter($transitions, function($transition) use ($current_state) {
-      return $transition->getToState() != $current_state->id();
+      if (method_exists($transition, 'to')) {
+        return $transition->to()->id() != $current_state->id();
+      }
+      else {
+        return $transition->getToState() != $current_state->id();
+      }
     });
 
     foreach ($transitions as $transition) {
@@ -175,11 +180,17 @@ class QuickTransitionForm extends FormBase {
       return;
     }
 
-    $state_id = $transitions[$element['#id']]->getToState();
     /** @var \Drupal\content_moderation\ModerationStateInterface $state */
-    $state = $this->entityTypeManager->getStorage('moderation_state')->load($state_id);
+    if (method_exists($transitions[$element['#id']], 'to')) {
+      $state = $transitions[$element['#id']]->to();
+      $state_id = $state->id();
+    }
+    else {
+      $state_id = $transitions[$element['#id']]->getToState();
+      $state = $this->entityTypeManager->getStorage('moderation_state')->load($state_id);
+    }
 
-    $entity->moderation_state->target_id = $state_id;
+    $entity->set('moderation_state', $state_id);
 
     if ($entity instanceof RevisionLogInterface) {
       $entity->setRevisionCreationTime(REQUEST_TIME);
@@ -197,6 +208,25 @@ class QuickTransitionForm extends FormBase {
       $entity_type_id = $entity->getEntityTypeId();
       $params = [$entity_type_id => $entity->id()];
       $form_state->setRedirect("entity.{$entity_type_id}.latest_version", $params);
+    }
+  }
+
+  /**
+   * Gets the Moderation State of a given Entity.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   An entity.
+   *
+   * @return \Drupal\workflows\StateInterface
+   */
+  protected function getModerationState(ContentEntityInterface $entity) {
+    if (method_exists($this->moderationInformation, 'getWorkFlowForEntity')) {
+      $state_id = $entity->moderation_state->get(0)->getValue()['value'];
+      $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
+      return $workflow->getState($state_id);
+    }
+    else {
+      return $entity->moderation_state->entity;
     }
   }
 
