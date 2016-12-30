@@ -95,8 +95,8 @@ class ModerationSidebarController extends ControllerBase {
     /** @var EntityInterface $entity */
     $entity = $request_stack->getCurrentRequest()->attributes->get('entity');
     $fake_request_stack = new RequestStack();
-    $url = $entity->toUrl();
-    $request = Request::create($url->toString());
+    $current_request = $container->get('request_stack')->getCurrentRequest();
+    $request = Request::create($entity->toUrl()->toString(), 'GET', [], [], [], $current_request->server->all(), null);
 
     /** @var \Drupal\Core\Routing\AccessAwareRouter $router */
     $router = $container->get('router');
