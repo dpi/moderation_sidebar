@@ -38,13 +38,14 @@
 
   $(window).on({
     'dialog:beforecreate': function (event, dialog, $element, settings) {
-      if ($element.find('.moderation-sidebar-info')) {
+      if ($element.find('.moderation-sidebar-info').length) {
         $('.toolbar-icon-moderation-sidebar').addClass('sidebar-open');
         localStorage.setItem('Drupal.moderation_sidebar.open', true);
+        settings.dialogClass += ' ui-dialog-outside-in';
       }
     },
     'dialog:beforeclose': function (event, dialog, $element) {
-      if ($element.find('.moderation-sidebar-info')) {
+      if ($element.find('.moderation-sidebar-info').length) {
         $('.toolbar-icon-moderation-sidebar').removeClass('sidebar-open');
         localStorage.setItem('Drupal.moderation_sidebar.open', false);
       }
