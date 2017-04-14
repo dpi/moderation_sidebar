@@ -244,7 +244,7 @@ class ModerationSidebarController extends ControllerBase {
       }
 
       // We maintain our own inline revisions tab.
-      if ($entity_type_id === 'node') {
+      if ($entity_type_id === 'node' && \Drupal::service('access_check.node.revision')->checkAccess($entity, \Drupal::currentUser()->getAccount())) {
         $build['actions']['version_history'] = [
           '#title' => $this->t('Revisions'),
           '#type' => 'link',
