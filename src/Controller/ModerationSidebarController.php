@@ -2,17 +2,20 @@
 
 namespace Drupal\moderation_sidebar\Controller;
 
+use Drupal\Component\Utility\Xss;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Link;
 use Drupal\Core\Menu\LocalTaskManager;
 use Drupal\Core\Menu\LocalTaskManagerInterface;
 use Drupal\Core\Routing\CurrentRouteMatch;
 use Drupal\Core\Url;
 use Drupal\moderation_sidebar\Form\QuickTransitionForm;
+use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -92,8 +95,9 @@ class ModerationSidebarController extends ControllerBase {
     /** @var \Symfony\Component\HttpFoundation\RequestStack $request_stack */
     $request_stack = $container->get('request_stack');
 
+    $attributes = $request_stack->getCurrentRequest()->attributes;
     /** @var EntityInterface $entity */
-    $entity = $request_stack->getCurrentRequest()->attributes->get('entity');
+    $entity = $attributes->has('node') ? $attributes->get('node') : $attributes->get('entity');
     $fake_request_stack = new RequestStack();
     $current_request = $container->get('request_stack')->getCurrentRequest();
     $request = Request::create($entity->toUrl()->toString(), 'GET', [], [], [], $current_request->server->all(), null);
@@ -166,16 +170,7 @@ class ModerationSidebarController extends ControllerBase {
     if ($entity instanceof RevisionLogInterface) {
       $user = $entity->getRevisionUser();
       $time = (int) $entity->getRevisionCreationTime();
-      $too_old = strtotime('-1 month');
-      // Show formatted time differences for edits younger than a month.
-      if ($time > $too_old) {
-        $diff = $this->dateFormatter->formatTimeDiffSince($time, ['granularity' => 1]);
-        $time_pretty = $this->t('@diff ago', ['@diff' => $diff]);
-      }
-      else {
-        $date = date('m/d/Y - h:i A', $time);
-        $time_pretty = $this->t('on @date', ['@date' => $date]);
-      }
+      $time_pretty = $this->getPrettyTime($time);
       $build['info']['#revision_author'] = $user->getDisplayName();
       $build['info']['#revision_author_link'] = $user->toLink()->toRenderable();
       $build['info']['#revision_time'] = $time;
@@ -247,6 +242,22 @@ class ModerationSidebarController extends ControllerBase {
           ],
         ];
       }
+
+      // We maintain our own inline revisions tab.
+      if ($entity_type_id === 'node') {
+        $build['actions']['version_history'] = [
+          '#title' => $this->t('Revisions'),
+          '#type' => 'link',
+          '#url' => Url::fromRoute('moderation_sidebar.node.version_history', [
+            'node' => $entity->id(),
+          ], ['query' => ['latest' => $is_latest]]),
+          '#attributes' => [
+            'class' => ['moderation-sidebar-link', 'button', 'use-ajax'],
+            'data-dialog-type' => 'dialog',
+            'data-dialog-renderer' => 'offcanvas',
+          ],
+        ];
+      }
     }
 
     // Add a list of (non duplicated) local tasks.
@@ -283,6 +294,97 @@ class ModerationSidebarController extends ControllerBase {
    */
   public function title(ContentEntityInterface $entity) {
     return $entity->label();
+  }
+
+  /**
+   * Generates an simple list of revisions for a node.
+   *
+   * @param \Drupal\node\NodeInterface $node
+   *   A node object.
+   *
+   * @return array
+   *   An array as expected by drupal_render().
+   */
+  public function revisionOverview(NodeInterface $node) {
+    $langcode = $node->language()->getId();
+    $node_storage = $this->entityTypeManager()->getStorage('node');
+
+    $result = $node_storage->getQuery()
+      ->allRevisions()
+      ->condition($node->getEntityType()->getKey('id'), $node->id())
+      ->sort($node->getEntityType()->getKey('revision'), 'DESC')
+      ->pager(5)
+      ->execute();
+
+    $params = [
+      'entity' => $node->id(),
+      'entity_type' => $node->getEntityTypeId(),
+    ];
+
+    if (\Drupal::request()->get('latest')) {
+      $back_url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
+    }
+    else {
+      $back_url = Url::fromRoute('moderation_sidebar.sidebar', $params);
+    }
+
+    $build = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['moderation-sidebar-container']],
+      [
+        '#title' => $this->t('← Back'),
+        '#type' => 'link',
+        '#url' => $back_url,
+        '#attributes' => [
+          'class' => ['use-ajax'],
+          'data-dialog-type' => 'dialog',
+          'data-dialog-renderer' => 'offcanvas',
+        ],
+      ],
+    ];
+
+    foreach (array_keys($result) as $vid) {
+      /** @var \Drupal\node\NodeInterface $revision */
+      $revision = $node_storage->loadRevision($vid);
+      // Only show revisions that are affected by the language that is being
+      // displayed.
+      if ($revision->hasTranslation($langcode) && $revision->getTranslation($langcode)->isRevisionTranslationAffected()) {
+        $user = $revision->getRevisionUser();
+        $message = !empty($revision->revision_log->value) ? $revision->revision_log->value : $this->t('No message');
+        // Use revision link to link to revisions that are not active.
+        $time = $revision->revision_timestamp->value;
+        $pretty_time = $this->getPrettyTime($revision->revision_timestamp->value);
+        if ($vid != $node->getRevisionId()) {
+          $link = new Link($pretty_time, new Url('entity.node.revision', ['node' => $node->id(), 'node_revision' => $vid]));
+        }
+        else {
+          $link = $node->toLink($pretty_time);
+        }
+
+        $build[] = [
+          '#theme' => 'moderation_sidebar_revision',
+          '#revision_message' => ['#markup' => $message, '#allowed_tags' => Xss::getHtmlTagList()],
+          '#revision_time' => $time,
+          '#revision_time_pretty' => $pretty_time,
+          '#revision_author' => $user->getDisplayName(),
+          '#revision_author_link' => $user->toLink()->toRenderable(),
+          '#revision_link' => $link,
+        ];
+      }
+    }
+
+    $build[] = [
+      '#title' => $this->t('View all revisions'),
+      '#type' => 'link',
+      '#url' => Url::fromRoute('entity.node.version_history', [
+        'node' => $node->id(),
+      ]),
+      '#attributes' => [
+        'class' => ['moderation-sidebar-link', 'button'],
+      ],
+    ];
+
+    return $build;
   }
 
   /**
@@ -338,7 +440,7 @@ class ModerationSidebarController extends ControllerBase {
     if (isset($tasks['tabs']) && !empty($tasks['tabs'])) {
       foreach ($tasks['tabs'] as $name => $tab) {
         // If this is a moderated node, we provide buttons for certain actions.
-        $duplicated_tab = preg_match('/^.*(canonical|edit_form|delete_form|latest_version_tab)$/', $name);
+        $duplicated_tab = preg_match('/^.*(canonical|edit_form|delete_form|latest_version_tab|entity\.node\.version_history)$/', $name);
         if (!$this->isModeratedEntity($entity) || !$duplicated_tab) {
           $tabs[$name] = [
             '#title' => $this->t($tab['#link']['title']),
@@ -352,6 +454,29 @@ class ModerationSidebarController extends ControllerBase {
       }
     }
     return $tabs;
+  }
+
+  /**
+   * Formats a timestamp to be presentable to end users.
+   *
+   * @param int $time
+   *   The revision timestamp.
+   *
+   * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+   *   Markup representing a presentable time.
+   */
+  protected function getPrettyTime($time) {
+    $too_old = strtotime('-1 month');
+    // Show formatted time differences for edits younger than a month.
+    if ($time > $too_old) {
+      $diff = $this->dateFormatter->formatTimeDiffSince($time, ['granularity' => 1]);
+      $time_pretty = $this->t('@diff ago', ['@diff' => $diff]);
+    }
+    else {
+      $date = date('m/d/Y - h:i A', $time);
+      $time_pretty = $this->t('on @date', ['@date' => $date]);
+    }
+    return $time_pretty;
   }
 
 }

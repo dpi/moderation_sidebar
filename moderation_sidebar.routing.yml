@@ -23,3 +23,12 @@ moderation_sidebar.sidebar_latest:
     parameters:
       entity:
         type: entity:{entity_type}
+
+moderation_sidebar.node.version_history:
+  path: '/moderation_sidebar/node/{node}/revisions'
+  defaults:
+    _title: 'Revisions'
+    _controller: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::revisionOverview'
+  requirements:
+    _access_node_revision: 'view'
+    node: \d+

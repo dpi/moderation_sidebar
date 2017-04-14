@@ -37,11 +37,36 @@ function moderation_sidebar_toolbar() {
 
   // We maintain two separate routes depending on what context we're viewing
   // the entity in.
-  if ($moderation_information->isLatestRevision($entity)) {
+  $is_latest = $moderation_information->isLatestRevision($entity);
+  if ($is_latest) {
     $url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
   }
   else {
     $url = Url::fromRoute('moderation_sidebar.sidebar', $params);
+  }
+
+  // Grab the state label for the quick hover feature.
+  $is_published = TRUE;
+  if (method_exists($moderation_information, 'isModeratedEntity')) {
+    $is_moderated_entity = $moderation_information->isModeratedEntity($entity);
+  }
+  else {
+    $is_moderated_entity = $moderation_information->isModeratableEntity($entity);
+  }
+  if ($is_moderated_entity) {
+    $is_published = $moderation_information->isLiveRevision($entity);
+  }
+  else if($entity->hasField('status')) {
+    $is_published = $entity->get('status');
+  }
+  $state_label = $is_published ? 'Published' : 'Draft';
+
+  if (!$is_latest) {
+    $state_label = 'Draft in Review';
+    $label_class = 'moderation-label-draft-available';
+  }
+  else {
+    $label_class = 'moderation-label-' . ($is_published ? 'published' : 'draft');
   }
 
   $items['moderation_sidebar'] += [
@@ -58,9 +83,11 @@ function moderation_sidebar_toolbar() {
           'use-ajax',
           'toolbar-icon',
           'toolbar-icon-moderation-sidebar',
+          $label_class,
         ],
         'data-dialog-type' => 'dialog',
         'data-dialog-renderer' => 'offcanvas',
+        'data-label' => $state_label,
       ],
     ],
     '#attached' => [
@@ -85,6 +112,16 @@ function moderation_sidebar_theme() {
         'revision_time_pretty' => NULL,
         'revision_author' => NULL,
         'revision_author_link' => NULL,
+      ],
+    ],
+    'moderation_sidebar_revision' => [
+      'variables' => [
+        'revision_message' => '',
+        'revision_time' => NULL,
+        'revision_time_pretty' => NULL,
+        'revision_author' => NULL,
+        'revision_author_link' => NULL,
+        'revision_link' => NULL,
       ],
     ],
   ];
