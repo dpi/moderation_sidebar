@@ -30,5 +30,19 @@ moderation_sidebar.node.version_history:
     _title: 'Revisions'
     _controller: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::revisionOverview'
   requirements:
+    _permission: 'use moderation sidebar'
     _access_node_revision: 'view'
     node: \d+
+
+moderation_sidebar.translate:
+  path: '/moderation_sidebar/{entity_type}/{entity}/translate'
+  defaults:
+    _title: 'Translate'
+    _controller: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::translateOverview'
+  requirements:
+    _permission: 'use moderation sidebar'
+    _entity_access: 'entity.view'
+  options:
+    parameters:
+      entity:
+        type: entity:{entity_type}

@@ -19,6 +19,7 @@ use Drupal\node\NodeInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Endpoints for the Moderation Sidebar module.
@@ -142,6 +143,7 @@ class ModerationSidebarController extends ControllerBase {
     // Load the correct translation.
     $language = $this->languageManager()->getCurrentLanguage();
     $entity = $entity->getTranslation($language->getId());
+    $entity_type_id = $entity->getEntityTypeId();
 
     $build = [
       '#type' => 'container',
@@ -185,7 +187,6 @@ class ModerationSidebarController extends ControllerBase {
     ];
 
     if ($this->isModeratedEntity($entity)) {
-      $entity_type_id = $entity->getEntityTypeId();
       $is_latest = $this->moderationInformation->isLatestRevision($entity);
 
       // If this revision is not the latest, provide a link to the latest entity.
@@ -258,6 +259,23 @@ class ModerationSidebarController extends ControllerBase {
           ],
         ];
       }
+
+      // We maintain our own inline translate tab.
+      if ($this->moduleHandler()->moduleExists('content_translation') && \Drupal::service('content_translation.manager')->isSupported($entity_type_id)) {
+        $build['actions']['translate'] = [
+          '#title' => $this->t('Translate'),
+          '#type' => 'link',
+          '#url' => Url::fromRoute('moderation_sidebar.translate', [
+            'entity_type' => $entity_type_id,
+            'entity' => $entity->id(),
+          ], ['query' => ['latest' => $is_latest]]),
+          '#attributes' => [
+            'class' => ['moderation-sidebar-link', 'button', 'use-ajax'],
+            'data-dialog-type' => 'dialog',
+            'data-dialog-renderer' => 'offcanvas',
+          ],
+        ];
+      }
     }
 
     // Add a list of (non duplicated) local tasks.
@@ -316,32 +334,7 @@ class ModerationSidebarController extends ControllerBase {
       ->pager(5)
       ->execute();
 
-    $params = [
-      'entity' => $node->id(),
-      'entity_type' => $node->getEntityTypeId(),
-    ];
-
-    if (\Drupal::request()->get('latest')) {
-      $back_url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
-    }
-    else {
-      $back_url = Url::fromRoute('moderation_sidebar.sidebar', $params);
-    }
-
-    $build = [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['moderation-sidebar-container']],
-      [
-        '#title' => $this->t('← Back'),
-        '#type' => 'link',
-        '#url' => $back_url,
-        '#attributes' => [
-          'class' => ['use-ajax'],
-          'data-dialog-type' => 'dialog',
-          'data-dialog-renderer' => 'offcanvas',
-        ],
-      ],
-    ];
+    $build = $this->getBackButton($node);
 
     foreach (array_keys($result) as $vid) {
       /** @var \Drupal\node\NodeInterface $revision */
@@ -383,6 +376,99 @@ class ModerationSidebarController extends ControllerBase {
         'class' => ['moderation-sidebar-link', 'button'],
       ],
     ];
+
+    return $build;
+  }
+
+  /**
+   * Generate a simple list of translations with quick-add buttons.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   An entity.
+   *
+   * @return array
+   *   An array as expected by drupal_render().
+   */
+  public function translateOverview(ContentEntityInterface $entity) {
+    $entity_type = $entity->getEntityType();
+    $entity_type_id = $entity->getEntityTypeId();
+    $bundle = $entity->bundle();
+    $account = $this->currentUser();
+
+    if (!\Drupal::moduleHandler()->moduleExists('content_translation') || !\Drupal::service('content_translation.manager')->isSupported($entity_type_id)) {
+      throw new AccessDeniedHttpException();
+    }
+
+    $build = $this->getBackButton($entity);
+
+    $build[] = [
+      '#markup' => t('<p>The current language is <strong>@language</strong></p>', [
+        '@language' => $entity->language()->getName(),
+      ])
+    ];
+
+    $can_create = $account->hasPermission('translate any entity');
+    if (!$can_create) {
+      $granularity = $entity_type->getPermissionGranularity();
+      $permission = $granularity === 'bundle' ? "translate $bundle $entity_type_id" : "translate $entity_type_id";
+      $can_create = $account->hasPermission($permission);
+    }
+
+    $languages = $this->languageManager()->getLanguages();
+    $translations = $entity->getTranslationLanguages();
+
+    if ($this->languageManager()->isMultilingual()) {
+      // Determine whether the current entity is translatable.
+      $translatable = FALSE;
+      foreach ($entity->getFieldDefinitions() as $instance) {
+        if ($instance->isTranslatable()) {
+          $translatable = TRUE;
+          break;
+        }
+      }
+
+      foreach ($languages as $language) {
+        $langcode = $language->getId();
+        if ($langcode === $entity->language()->getId()) {
+          continue;
+        }
+        if (array_key_exists($langcode, $translations)) {
+          $translation = $entity->getTranslation($langcode);
+          $build[] = [
+            '#title' => $this->t('View @language translation', [
+              '@language' => $language->getName(),
+            ]),
+            '#type' => 'link',
+            '#url' => $translation->toUrl(),
+            '#attributes' => [
+              'class' => ['moderation-sidebar-link', 'button'],
+            ],
+          ];
+        }
+        else if ($can_create && $translatable) {
+          $build[] = [
+            '#title' => $this->t('Create @language translation', [
+              '@language' => $language->getName(),
+            ]),
+            '#type' => 'link',
+            '#url' => Url::fromRoute(
+              "entity.$entity_type_id.content_translation_add",
+              [
+                'source' => $entity->getUntranslated()->language()->getId(),
+                'target' => $language->getId(),
+                $entity_type_id => $entity->id(),
+              ],
+              [
+                'language' => $language,
+              ]
+            ),
+            '#attributes' => [
+              'class' => ['moderation-sidebar-link', 'button'],
+            ],
+          ];
+        }
+      }
+    }
 
     return $build;
   }
@@ -440,7 +526,7 @@ class ModerationSidebarController extends ControllerBase {
     if (isset($tasks['tabs']) && !empty($tasks['tabs'])) {
       foreach ($tasks['tabs'] as $name => $tab) {
         // If this is a moderated node, we provide buttons for certain actions.
-        $duplicated_tab = preg_match('/^.*(canonical|edit_form|delete_form|latest_version_tab|entity\.node\.version_history)$/', $name);
+        $duplicated_tab = preg_match('/^.*(canonical|edit_form|delete_form|latest_version_tab|entity\.node\.version_history|content_translation_overview)$/', $name);
         if (!$this->isModeratedEntity($entity) || !$duplicated_tab) {
           $tabs[$name] = [
             '#title' => $this->t($tab['#link']['title']),
@@ -477,6 +563,46 @@ class ModerationSidebarController extends ControllerBase {
       $time_pretty = $this->t('on @date', ['@date' => $date]);
     }
     return $time_pretty;
+  }
+
+  /**
+   * Generates the render array for an AJAX-enabled back button.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   An entity.
+   *
+   * @return array
+   *   A render array representing a back button.
+   */
+  protected function getBackButton(ContentEntityInterface $entity) {
+    $params = [
+      'entity' => $entity->id(),
+      'entity_type' => $entity->getEntityTypeId(),
+    ];
+
+    if (\Drupal::request()->get('latest')) {
+      $back_url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
+    }
+    else {
+      $back_url = Url::fromRoute('moderation_sidebar.sidebar', $params);
+    }
+
+    $build = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['moderation-sidebar-container']],
+      [
+        '#title' => $this->t('← Back'),
+        '#type' => 'link',
+        '#url' => $back_url,
+        '#attributes' => [
+          'class' => ['use-ajax'],
+          'data-dialog-type' => 'dialog',
+          'data-dialog-renderer' => 'offcanvas',
+        ],
+      ],
+    ];
+
+    return $build;
   }
 
 }
