@@ -331,12 +331,15 @@ class ModerationSidebarController extends ControllerBase {
       ->allRevisions()
       ->condition($node->getEntityType()->getKey('id'), $node->id())
       ->sort($node->getEntityType()->getKey('revision'), 'DESC')
-      ->pager(5)
       ->execute();
 
     $build = $this->getBackButton($node);
 
+    $count = 0;
     foreach (array_keys($result) as $vid) {
+      if ($count >= 5) {
+        break;
+      }
       /** @var \Drupal\node\NodeInterface $revision */
       $revision = $node_storage->loadRevision($vid);
       // Only show revisions that are affected by the language that is being
@@ -363,6 +366,7 @@ class ModerationSidebarController extends ControllerBase {
           '#revision_author_link' => $user->toLink()->toRenderable(),
           '#revision_link' => $link,
         ];
+        ++$count;
       }
     }
 
