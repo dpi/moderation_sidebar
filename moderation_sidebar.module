@@ -62,7 +62,7 @@ function moderation_sidebar_toolbar() {
   $state_label = $is_published ? 'Published' : 'Draft';
 
   if (!$is_latest) {
-    $state_label = 'Draft in Review';
+    $state_label = 'Draft available';
     $label_class = 'moderation-label-draft-available';
   }
   else {
