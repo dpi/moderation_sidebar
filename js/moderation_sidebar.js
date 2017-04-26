@@ -39,6 +39,11 @@
           $('.toolbar-icon-moderation-sidebar').addClass('sidebar-open');
           settings.dialogClass += ' ui-dialog-outside-in';
         }
+      },
+      'dialog:beforeclose': function (event, dialog, $element) {
+        if ($element.find('.moderation-sidebar-container').length) {
+          $('.toolbar-icon-moderation-sidebar').removeClass('sidebar-open');
+        }
       }
     });
   });
