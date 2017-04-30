@@ -146,7 +146,12 @@ class QuickTransitionForm extends FormBase {
     $entity = $form_state->get('entity');
     $default_revision_id = $this->moderationInformation->getDefaultRevisionId($entity->getEntityTypeId(), $entity->id());
     $default_revision = $this->entityTypeManager->getStorage($entity->getEntityTypeId())->loadRevision($default_revision_id);
-    $default_revision->revision_log = $this->t('Used the Moderation Sidebar to delete the current draft.');
+    if ($default_revision instanceof RevisionLogInterface) {
+      $default_revision->setRevisionLogMessage($this->t('Used the Moderation Sidebar to delete the current draft.'));
+      $default_revision->setRevisionCreationTime(time());
+      $default_revision->setRevisionUserId($this->currentUser()->id());
+      $default_revision->setNewRevision();
+    }
     $default_revision->save();
     drupal_set_message($this->t('The draft has been discarded successfully.'));
 
@@ -193,8 +198,10 @@ class QuickTransitionForm extends FormBase {
     $entity->set('moderation_state', $state_id);
 
     if ($entity instanceof RevisionLogInterface) {
-      $entity->setRevisionCreationTime(REQUEST_TIME);
       $entity->setRevisionLogMessage($this->t('Used the Moderation Sidebar to change the state to "@state".', ['@state' => $state->label()]));
+      $entity->setRevisionCreationTime(time());
+      $entity->setRevisionUserId($this->currentUser()->id());
+      $entity->setNewRevision();
     }
 
     $entity->save();
