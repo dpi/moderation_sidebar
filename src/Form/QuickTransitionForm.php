@@ -87,7 +87,7 @@ class QuickTransitionForm extends FormBase {
     $transitions = $this->validation->getValidTransitions($entity, $this->currentUser());
 
     // Exclude self-transitions.
-    /** @var \Drupal\content_moderation\Entity\ModerationState $current_state */
+    /** @var \Drupal\content_moderation\ContentModerationStateInterface $current_state */
     $current_state = $this->getModerationState($entity);
 
     /** @var \Drupal\workflows\TransitionInterface[] $transitions */
@@ -175,7 +175,7 @@ class QuickTransitionForm extends FormBase {
     /** @var ContentEntityInterface $entity */
     $entity = $form_state->get('entity');
 
-    /** @var \Drupal\content_moderation\ModerationStateTransitionInterface[] $transitions */
+    /** @var \Drupal\content_moderation\ContentModerationStateInterface[] $transitions */
     $transitions = $this->validation->getValidTransitions($entity, $this->currentUser());
 
     $element = $form_state->getTriggeringElement();
@@ -185,7 +185,7 @@ class QuickTransitionForm extends FormBase {
       return;
     }
 
-    /** @var \Drupal\content_moderation\ModerationStateInterface $state */
+    /** @var \Drupal\content_moderation\ContentModerationStateInterface $state */
     if (method_exists($transitions[$element['#id']], 'to')) {
       $state = $transitions[$element['#id']]->to();
       $state_id = $state->id();
