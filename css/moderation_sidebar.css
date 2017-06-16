@@ -10,9 +10,9 @@
   float: right;
 }
 
-.ui-dialog-offcanvas .moderation-sidebar-link,
-.ui-dialog-offcanvas .moderation-sidebar-link:visited,
-.ui-dialog-offcanvas .moderation-sidebar-link.button {
+.ui-dialog-off-canvas .moderation-sidebar-link,
+.ui-dialog-off-canvas .moderation-sidebar-link:visited,
+.ui-dialog-off-canvas .moderation-sidebar-link.button {
   display: block;
   margin: 0 0 10px 0;
   padding: 10px 0 10px 0;
@@ -22,16 +22,16 @@
   text-align: center;
 }
 
-.ui-dialog-offcanvas .moderation-sidebar-link:hover {
+.ui-dialog-off-canvas .moderation-sidebar-link:hover {
   color: white;
 }
 
-.ui-dialog-offcanvas .moderation-sidebar-link.button--danger {
+.ui-dialog-off-canvas .moderation-sidebar-link.button--danger {
   background: #bd2727;
 }
 
-.ui-dialog-offcanvas .moderation-sidebar-link.button--danger:hover,
-.ui-dialog-offcanvas .moderation-sidebar-link.button--danger:focus {
+.ui-dialog-off-canvas .moderation-sidebar-link.button--danger:hover,
+.ui-dialog-off-canvas .moderation-sidebar-link.button--danger:focus {
   background: #da2e2e;
 }
 
@@ -48,7 +48,7 @@
   margin: 10px 0 20px 0;
 }
 
-.ui-dialog-offcanvas .moderation-sidebar-info h2 {
+.ui-dialog-off-canvas .moderation-sidebar-info h2 {
   font-size: 16px;
 }
 

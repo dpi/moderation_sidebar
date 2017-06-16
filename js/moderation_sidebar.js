@@ -26,7 +26,7 @@
   // information is already available.
   $('.toolbar-icon-moderation-sidebar').on('click', function (e, data) {
     if ($('.moderation-sidebar-container').length && (!data || !data.reload)) {
-      $('#drupal-offcanvas').dialog('close');
+      $('#drupal-off-canvas').dialog('close');
       e.stopImmediatePropagation();
       e.preventDefault();
     }

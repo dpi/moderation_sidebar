@@ -86,7 +86,7 @@ function moderation_sidebar_toolbar() {
           $label_class,
         ],
         'data-dialog-type' => 'dialog',
-        'data-dialog-renderer' => 'offcanvas',
+        'data-dialog-renderer' => 'off_canvas',
         'data-label' => $state_label,
       ],
     ],

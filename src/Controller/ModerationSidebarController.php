@@ -255,7 +255,7 @@ class ModerationSidebarController extends ControllerBase {
           '#attributes' => [
             'class' => ['moderation-sidebar-link', 'button', 'use-ajax'],
             'data-dialog-type' => 'dialog',
-            'data-dialog-renderer' => 'offcanvas',
+            'data-dialog-renderer' => 'off_canvas',
           ],
         ];
       }
@@ -272,7 +272,7 @@ class ModerationSidebarController extends ControllerBase {
           '#attributes' => [
             'class' => ['moderation-sidebar-link', 'button', 'use-ajax'],
             'data-dialog-type' => 'dialog',
-            'data-dialog-renderer' => 'offcanvas',
+            'data-dialog-renderer' => 'off_canvas',
           ],
         ];
       }
@@ -601,7 +601,7 @@ class ModerationSidebarController extends ControllerBase {
         '#attributes' => [
           'class' => ['use-ajax'],
           'data-dialog-type' => 'dialog',
-          'data-dialog-renderer' => 'offcanvas',
+          'data-dialog-renderer' => 'off_canvas',
         ],
       ],
     ];
