@@ -233,7 +233,7 @@ class ModerationSidebarController extends ControllerBase {
       }
 
       // Only show the entity delete action on the default revision.
-      if ($entity->isDefaultRevision()) {
+      if ($entity->isDefaultRevision() && $entity->access('delete')) {
         $build['actions']['delete'] = [
           '#title' => $this->t('Delete content'),
           '#type' => 'link',
