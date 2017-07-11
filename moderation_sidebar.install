@@ -1,6 +1,10 @@
 <?php
 
 /**
+ * @file Contains install routines for moderation_sidebar.
+ */
+
+/**
  * Implements hook_requirements().
  */
 function moderation_sidebar_requirements($phase) {

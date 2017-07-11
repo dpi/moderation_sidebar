@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * @file Contains hook implementations for moderation_sidebar.
+ */
+
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Url;
 
@@ -56,7 +60,7 @@ function moderation_sidebar_toolbar() {
   if ($is_moderated_entity) {
     $is_published = $moderation_information->isLiveRevision($entity);
   }
-  else if($entity->hasField('status')) {
+  elseif ($entity->hasField('status')) {
     $is_published = $entity->get('status');
   }
   $state_label = $is_published ? 'Published' : 'Draft';

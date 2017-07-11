@@ -56,8 +56,8 @@ class QuickTransitionForm extends FormBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    $moderation_info = $container->has('workbench_moderation.moderation_information') ? $container->get('workbench_moderation.moderation_information'): $container->get('content_moderation.moderation_information');
-    $validation = $container->has('workbench_moderation.state_transition_validation') ? $container->get('workbench_moderation.state_transition_validation'): $container->get('content_moderation.state_transition_validation');
+    $moderation_info = $container->has('workbench_moderation.moderation_information') ? $container->get('workbench_moderation.moderation_information') : $container->get('content_moderation.moderation_information');
+    $validation = $container->has('workbench_moderation.state_transition_validation') ? $container->get('workbench_moderation.state_transition_validation') : $container->get('content_moderation.state_transition_validation');
     return new static(
       $moderation_info,
       $validation,
@@ -91,7 +91,7 @@ class QuickTransitionForm extends FormBase {
     $current_state = $this->getModerationState($entity);
 
     /** @var \Drupal\workflows\TransitionInterface[] $transitions */
-    $transitions = array_filter($transitions, function($transition) use ($current_state) {
+    $transitions = array_filter($transitions, function ($transition) use ($current_state) {
       if (method_exists($transition, 'to')) {
         return $transition->to()->id() != $current_state->id();
       }
@@ -142,7 +142,7 @@ class QuickTransitionForm extends FormBase {
    *   The current state of the form.
    */
   public function discardDraft(array &$form, FormStateInterface $form_state) {
-    /** @var ContentEntityInterface $entity */
+    /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
     $entity = $form_state->get('entity');
     $default_revision_id = $this->moderationInformation->getDefaultRevisionId($entity->getEntityTypeId(), $entity->id());
     $default_revision = $this->entityTypeManager->getStorage($entity->getEntityTypeId())->loadRevision($default_revision_id);
@@ -172,7 +172,7 @@ class QuickTransitionForm extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    /** @var ContentEntityInterface $entity */
+    /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
     $entity = $form_state->get('entity');
 
     /** @var \Drupal\content_moderation\ContentModerationStateInterface[] $transitions */

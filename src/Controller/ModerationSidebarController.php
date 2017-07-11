@@ -6,7 +6,6 @@ use Drupal\Component\Utility\Xss;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
-use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Link;
@@ -97,11 +96,11 @@ class ModerationSidebarController extends ControllerBase {
     $request_stack = $container->get('request_stack');
 
     $attributes = $request_stack->getCurrentRequest()->attributes;
-    /** @var EntityInterface $entity */
+    /** @var \Drupal\Core\Entity\EntityInterface $entity */
     $entity = $attributes->has('node') ? $attributes->get('node') : $attributes->get('entity');
     $fake_request_stack = new RequestStack();
     $current_request = $container->get('request_stack')->getCurrentRequest();
-    $request = Request::create($entity->toUrl()->toString(), 'GET', [], [], [], $current_request->server->all(), null);
+    $request = Request::create($entity->toUrl()->toString(), 'GET', [], [], [], $current_request->server->all(), NULL);
 
     /** @var \Drupal\Core\Routing\AccessAwareRouter $router */
     $router = $container->get('router');
@@ -157,7 +156,7 @@ class ModerationSidebarController extends ControllerBase {
       $state = $this->getModerationState($entity);
       $state_label = $state->label();
     }
-    else if ($entity->hasField('status')) {
+    elseif ($entity->hasField('status')) {
       $state_label = $entity->get('status') ? $this->t('Published') : $this->t('Unpublished');
     }
     else {
@@ -408,7 +407,7 @@ class ModerationSidebarController extends ControllerBase {
     $build[] = [
       '#markup' => t('<p>The current language is <strong>@language</strong></p>', [
         '@language' => $entity->language()->getName(),
-      ])
+      ]),
     ];
 
     $can_create = $account->hasPermission('translate any entity');
@@ -449,7 +448,7 @@ class ModerationSidebarController extends ControllerBase {
             ],
           ];
         }
-        else if ($can_create && $translatable) {
+        elseif ($can_create && $translatable) {
           $build[] = [
             '#title' => $this->t('Create @language translation', [
               '@language' => $language->getName(),
