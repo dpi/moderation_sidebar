@@ -36,12 +36,12 @@
   color: white;
 }
 
-.ui-dialog-off-canvas #drupal-off-canvas .moderation-sidebar-link.button--danger {
+.ui-dialog-off-canvas #drupal-off-canvas .moderation-sidebar-link.button.button--danger {
   background: #bd2727;
 }
 
-.ui-dialog-off-canvas #drupal-off-canvas .moderation-sidebar-link.button--danger:hover,
-.ui-dialog-off-canvas #drupal-off-canvas .moderation-sidebar-link.button--danger:focus {
+.ui-dialog-off-canvas #drupal-off-canvas .moderation-sidebar-link.button.button--danger:hover,
+.ui-dialog-off-canvas #drupal-off-canvas .moderation-sidebar-link.button.button--danger:focus {
   background: #da2e2e;
 }
 
