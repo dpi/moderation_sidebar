@@ -5,6 +5,6 @@ version: VERSION
 core: 8.x
 package: Other
 dependencies:
-  - outside_in
+  - settings_tray
 test_dependencies:
   - workbench_moderation

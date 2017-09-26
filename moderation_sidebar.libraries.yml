@@ -6,5 +6,5 @@ main:
     theme:
       css/moderation_sidebar.css: {}
   dependencies:
-    - outside_in/drupal.off_canvas
-    - outside_in/drupal.outside_in
+    - settings_tray/drupal.off_canvas
+    - settings_tray/drupal.settings_tray
