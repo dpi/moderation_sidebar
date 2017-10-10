@@ -230,7 +230,7 @@ class QuickTransitionForm extends FormBase {
     if (method_exists($this->moderationInformation, 'getWorkFlowForEntity')) {
       $state_id = $entity->moderation_state->get(0)->getValue()['value'];
       $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
-      return $workflow->getState($state_id);
+      return $workflow->getTypePlugin()->getState($state_id);
     }
     else {
       return $entity->moderation_state->entity;
