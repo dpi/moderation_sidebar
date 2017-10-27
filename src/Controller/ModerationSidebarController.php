@@ -598,7 +598,7 @@ class ModerationSidebarController extends ControllerBase {
         '#type' => 'link',
         '#url' => $back_url,
         '#attributes' => [
-          'class' => ['use-ajax'],
+          'class' => ['use-ajax', 'moderation-sidebar-back-button'],
           'data-dialog-type' => 'dialog',
           'data-dialog-renderer' => 'off_canvas',
         ],
