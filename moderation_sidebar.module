@@ -1,7 +1,8 @@
 <?php
 
 /**
- * @file Contains hook implementations for moderation_sidebar.
+ * @file
+ * Contains hook implementations for moderation_sidebar.
  */
 
 use Drupal\Core\Entity\ContentEntityInterface;
@@ -32,7 +33,7 @@ function moderation_sidebar_toolbar() {
   }
 
   /** @var \Drupal\content_moderation\ModerationInformation $moderation_information */
-  $moderation_information = \Drupal::hasService('workbench_moderation.moderation_information') ? \Drupal::service('workbench_moderation.moderation_information') : \Drupal::service('content_moderation.moderation_information');
+  $moderation_information = \Drupal::service('content_moderation.moderation_information');
 
   $params = [
     'entity' => $entity->id(),
@@ -51,13 +52,7 @@ function moderation_sidebar_toolbar() {
 
   // Grab the state label for the quick hover feature.
   $is_published = TRUE;
-  if (method_exists($moderation_information, 'isModeratedEntity')) {
-    $is_moderated_entity = $moderation_information->isModeratedEntity($entity);
-  }
-  else {
-    $is_moderated_entity = $moderation_information->isModeratableEntity($entity);
-  }
-  if ($is_moderated_entity) {
+  if ($moderation_information->isModeratedEntity($entity)) {
     $is_published = $moderation_information->isLiveRevision($entity);
   }
   elseif ($entity->hasField('status')) {

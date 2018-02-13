@@ -147,6 +147,14 @@
   background: #ffae00;
 }
 
+.moderation-sidebar-toolbar-tab .ajax-progress {
+  display: none;
+}
+
+.toolbar-icon-moderation-sidebar + .ajax-progress {
+  opacity: .5;
+}
+
 @media only screen and (min-width: 16.5em) and (max-width: 36em) {
   .toolbar-icon-moderation-sidebar:before {
     filter: brightness(1.5);

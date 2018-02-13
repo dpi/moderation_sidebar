@@ -3,6 +3,7 @@
 namespace Drupal\moderation_sidebar\Controller;
 
 use Drupal\Component\Utility\Xss;
+use Drupal\content_moderation\ModerationInformation;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
@@ -74,7 +75,7 @@ class ModerationSidebarController extends ControllerBase {
    * @param \Drupal\Core\Menu\LocalTaskManagerInterface $local_task_manager
    *   The local task manager.
    */
-  public function __construct($moderation_information, RequestStack $request_stack, DateFormatterInterface $date_formatter, ModuleHandlerInterface $module_handler, LocalTaskManagerInterface $local_task_manager) {
+  public function __construct(ModerationInformation $moderation_information, RequestStack $request_stack, DateFormatterInterface $date_formatter, ModuleHandlerInterface $module_handler, LocalTaskManagerInterface $local_task_manager) {
     $this->moderationInformation = $moderation_information;
     $this->request = $request_stack->getCurrentRequest();
     $this->dateFormatter = $date_formatter;
@@ -86,7 +87,7 @@ class ModerationSidebarController extends ControllerBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    $moderation_info = $container->has('workbench_moderation.moderation_information') ? $container->get('workbench_moderation.moderation_information') : $container->get('content_moderation.moderation_information');
+    $moderation_info = $container->get('content_moderation.moderation_information');
 
     // We need an instance of LocalTaskManager that thinks we're viewing the
     // entity. To accomplish this, we need to mock a request stack with a fake
@@ -152,7 +153,7 @@ class ModerationSidebarController extends ControllerBase {
     ];
 
     // Add information about this Entity to the top of the bar.
-    if ($this->isModeratedEntity($entity)) {
+    if ($this->moderationInformation->isModeratedEntity($entity)) {
       $state = $this->getModerationState($entity);
       $state_label = $state->label();
     }
@@ -185,10 +186,10 @@ class ModerationSidebarController extends ControllerBase {
       ],
     ];
 
-    if ($this->isModeratedEntity($entity)) {
+    if ($this->moderationInformation->isModeratedEntity($entity)) {
       $is_latest = $this->moderationInformation->isLatestRevision($entity);
 
-      // If this revision is not the latest, provide a link to the latest entity.
+      // Provide a link to the latest entity.
       if (!$is_latest) {
         $build['actions']['view_latest'] = [
           '#title' => $this->t('View existing draft'),
@@ -483,35 +484,12 @@ class ModerationSidebarController extends ControllerBase {
    *   An entity.
    *
    * @return \Drupal\workflows\StateInterface
+   *   The moderation state for the given entity.
    */
   protected function getModerationState(ContentEntityInterface $entity) {
-    if (method_exists($this->moderationInformation, 'getWorkFlowForEntity')) {
-      $state_id = $entity->moderation_state->get(0)->getValue()['value'];
-      $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
-      return $workflow->getTypePlugin()->getState($state_id);
-    }
-    else {
-      return $entity->moderation_state->entity;
-    }
-  }
-
-  /**
-   * Checks if a given Entity is moderated.
-   *
-   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
-   *   An entity.
-   *
-   * @return bool
-   *   Whether or not the entity is moderated.
-   */
-  protected function isModeratedEntity(ContentEntityInterface $entity) {
-    if (method_exists($this->moderationInformation, 'isModeratedEntity')) {
-      $is_moderated_entity = $this->moderationInformation->isModeratedEntity($entity);
-    }
-    else {
-      $is_moderated_entity = $this->moderationInformation->isModeratableEntity($entity);
-    }
-    return $is_moderated_entity;
+    $state_id = $entity->moderation_state->get(0)->getValue()['value'];
+    $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
+    return $workflow->getTypePlugin()->getState($state_id);
   }
 
   /**
@@ -530,9 +508,9 @@ class ModerationSidebarController extends ControllerBase {
       foreach ($tasks['tabs'] as $name => $tab) {
         // If this is a moderated node, we provide buttons for certain actions.
         $duplicated_tab = preg_match('/^.*(canonical|edit_form|delete_form|latest_version_tab|entity\.node\.version_history|content_translation_overview)$/', $name);
-        if (!$this->isModeratedEntity($entity) || !$duplicated_tab) {
+        if (!$this->moderationInformation->isModeratedEntity($entity) || !$duplicated_tab) {
           $tabs[$name] = [
-            '#title' => $this->t($tab['#link']['title']),
+            '#title' => $tab['#link']['title'],
             '#type' => 'link',
             '#url' => $tab['#link']['url'],
             '#attributes' => [

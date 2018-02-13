@@ -7,8 +7,7 @@ contains contextual actions related to the Moderation module.
 
 REQUIREMENTS
 ------------
- - Outside In (Drupal core 8.2+)
- - Content Moderation (Drupal core 8.2+) or Workbench Moderation
+ - Content Moderation
 
 CONFIGURATION
 -------------

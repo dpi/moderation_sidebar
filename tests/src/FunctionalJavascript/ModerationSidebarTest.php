@@ -14,25 +14,13 @@ class ModerationSidebarTest extends JavascriptTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
-    'node',
-  ];
-
-  /**
-   * Defines the moderation module used for this test.
-   *
-   * @var string
-   */
-  protected static $moderation_module = 'content_moderation';
+  public static $modules = ['toolbar', 'moderation_sidebar', 'node'];
 
   /**
    * {@inheritdoc}
    */
   protected function setUp() {
     parent::setUp();
-
-    $this->container->get('module_installer')->install([self::$moderation_module, 'moderation_sidebar'], TRUE);
-    $this->resetAll();
 
     // Create a Content Type with moderation enabled.
     $node_type = $this->drupalCreateContentType(['type' => 'article', 'name' => 'Article']);

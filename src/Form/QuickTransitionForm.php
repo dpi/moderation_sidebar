@@ -2,6 +2,8 @@
 
 namespace Drupal\moderation_sidebar\Form;
 
+use Drupal\content_moderation\ModerationInformationInterface;
+use Drupal\content_moderation\StateTransitionValidationInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
@@ -41,12 +43,12 @@ class QuickTransitionForm extends FormBase {
    *
    * @param \Drupal\content_moderation\ModerationInformationInterface $moderation_info
    *   The moderation information service.
-   * @param \Drupal\content_moderation\StateTransitionValidation $validation
+   * @param \Drupal\content_moderation\StateTransitionValidationInterface $validation
    *   The moderation state transition validation service.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    */
-  public function __construct($moderation_info, $validation, EntityTypeManagerInterface $entity_type_manager) {
+  public function __construct(ModerationInformationInterface $moderation_info, StateTransitionValidationInterface $validation, EntityTypeManagerInterface $entity_type_manager) {
     $this->moderationInformation = $moderation_info;
     $this->validation = $validation;
     $this->entityTypeManager = $entity_type_manager;
@@ -56,11 +58,9 @@ class QuickTransitionForm extends FormBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    $moderation_info = $container->has('workbench_moderation.moderation_information') ? $container->get('workbench_moderation.moderation_information') : $container->get('content_moderation.moderation_information');
-    $validation = $container->has('workbench_moderation.state_transition_validation') ? $container->get('workbench_moderation.state_transition_validation') : $container->get('content_moderation.state_transition_validation');
     return new static(
-      $moderation_info,
-      $validation,
+      $container->get('content_moderation.moderation_information'),
+      $container->get('content_moderation.state_transition_validation'),
       $container->get('entity_type.manager')
     );
   }
@@ -87,24 +87,19 @@ class QuickTransitionForm extends FormBase {
     $transitions = $this->validation->getValidTransitions($entity, $this->currentUser());
 
     // Exclude self-transitions.
-    /** @var \Drupal\content_moderation\ContentModerationStateInterface $current_state */
+    /** @var \Drupal\content_moderation\Entity\ContentModerationStateInterface $current_state */
     $current_state = $this->getModerationState($entity);
 
     /** @var \Drupal\workflows\TransitionInterface[] $transitions */
     $transitions = array_filter($transitions, function ($transition) use ($current_state) {
-      if (method_exists($transition, 'to')) {
-        return $transition->to()->id() != $current_state->id();
-      }
-      else {
-        return $transition->getToState() != $current_state->id();
-      }
+      return $transition->to()->id() != $current_state->id();
     });
 
     foreach ($transitions as $transition) {
       $form[$transition->id()] = [
         '#type' => 'submit',
         '#id' => $transition->id(),
-        '#value' => $this->t($transition->label()),
+        '#value' => $transition->label(),
         '#attributes' => [
           'class' => ['moderation-sidebar-link', 'button--primary'],
         ],
@@ -175,7 +170,7 @@ class QuickTransitionForm extends FormBase {
     /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
     $entity = $form_state->get('entity');
 
-    /** @var \Drupal\content_moderation\ContentModerationStateInterface[] $transitions */
+    /** @var \Drupal\content_moderation\Entity\ContentModerationStateInterface[] $transitions */
     $transitions = $this->validation->getValidTransitions($entity, $this->currentUser());
 
     $element = $form_state->getTriggeringElement();
@@ -185,15 +180,9 @@ class QuickTransitionForm extends FormBase {
       return;
     }
 
-    /** @var \Drupal\content_moderation\ContentModerationStateInterface $state */
-    if (method_exists($transitions[$element['#id']], 'to')) {
-      $state = $transitions[$element['#id']]->to();
-      $state_id = $state->id();
-    }
-    else {
-      $state_id = $transitions[$element['#id']]->getToState();
-      $state = $this->entityTypeManager->getStorage('moderation_state')->load($state_id);
-    }
+    /** @var \Drupal\content_moderation\Entity\ContentModerationStateInterface $state */
+    $state = $transitions[$element['#id']]->to();
+    $state_id = $state->id();
 
     $entity->set('moderation_state', $state_id);
 
@@ -225,16 +214,12 @@ class QuickTransitionForm extends FormBase {
    *   An entity.
    *
    * @return \Drupal\workflows\StateInterface
+   *   The moderation state for the given entity.
    */
   protected function getModerationState(ContentEntityInterface $entity) {
-    if (method_exists($this->moderationInformation, 'getWorkFlowForEntity')) {
-      $state_id = $entity->moderation_state->get(0)->getValue()['value'];
-      $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
-      return $workflow->getTypePlugin()->getState($state_id);
-    }
-    else {
-      return $entity->moderation_state->entity;
-    }
+    $state_id = $entity->moderation_state->get(0)->getValue()['value'];
+    $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
+    return $workflow->getTypePlugin()->getState($state_id);
   }
 
 }

@@ -1,10 +1,7 @@
 name: 'Moderation Sidebar'
 type: module
 description: 'Provides a frontend sidebar for Content Moderation'
-version: VERSION
 core: 8.x
 package: Other
 dependencies:
-  - settings_tray
-test_dependencies:
-  - workbench_moderation
+  - content_moderation
