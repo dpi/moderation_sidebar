@@ -4,4 +4,4 @@ description: 'Provides a frontend sidebar for Content Moderation'
 core: 8.x
 package: Other
 dependencies:
-  - content_moderation
+  - drupal:content_moderation (>= 8.5)
