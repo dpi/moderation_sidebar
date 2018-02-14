@@ -18,8 +18,15 @@ function moderation_sidebar_toolbar() {
     // @todo Can we set cache contexts based on the entity revision?
     '#cache' => [
       'max-age' => 0,
+      'contexts' => [
+        'user.permissions',
+      ],
     ],
   ];
+
+  if (!\Drupal::currentUser()->hasPermission('use moderation sidebar')) {
+    return $items;
+  }
 
   /** @var \Drupal\Core\Routing\AdminContext $admin_context */
   $admin_context = \Drupal::service('router.admin_context');
