@@ -83,6 +83,21 @@ class QuickTransitionForm extends FormBase {
       return [];
     }
 
+    // Allow users to discard Drafts.
+    if ($this->moderationInformation->isLatestRevision($entity)
+      && !$this->moderationInformation->isLiveRevision($entity)
+      && !$entity->isDefaultRevision()) {
+      $form['discard_draft'] = [
+        '#type' => 'submit',
+        '#id' => 'moderation-sidebar-discard-draft',
+        '#value' => $this->t('Discard draft'),
+        '#attributes' => [
+          'class' => ['moderation-sidebar-link', 'button', 'button--danger'],
+        ],
+        '#submit' => ['::discardDraft'],
+      ];
+    }
+
     // Persist the entity so we can access it in the submit handler.
     $form_state->set('entity', $entity);
 
@@ -108,18 +123,28 @@ class QuickTransitionForm extends FormBase {
       ];
     }
 
-    // Allow users to discard Drafts.
-    if ($this->moderationInformation->isLatestRevision($entity)
-      && !$this->moderationInformation->isLiveRevision($entity)
-      && !$entity->isDefaultRevision()) {
-      $form['discard_draft'] = [
-        '#type' => 'submit',
-        '#id' => 'moderation-sidebar-discard-draft',
-        '#value' => $this->t('Discard draft'),
+    if (!empty($transitions)) {
+      $form['revision_log_toggle'] = [
+        '#type' => 'checkbox',
+        '#title' => $this->t('Use custom log message'),
+        '#default_value' => FALSE,
         '#attributes' => [
-          'class' => ['moderation-sidebar-link', 'button', 'button--danger'],
+          'class' => ['moderation-sidebar-revision-log-toggle'],
         ],
-        '#submit' => ['::discardDraft'],
+      ];
+      $form['revision_log'] = [
+        '#type' => 'textarea',
+        '#description' => $this->t('Briefly describe this state change.'),
+        '#attributes' => [
+          'class' => ['moderation-sidebar-revision-log'],
+        ],
+        '#states' => [
+          'visible' => [
+            ':input[name="revision_log_toggle"]' => [
+              'checked' => TRUE,
+            ],
+          ],
+        ],
       ];
     }
 
@@ -144,7 +169,13 @@ class QuickTransitionForm extends FormBase {
     $storage = $this->entityTypeManager->getStorage($entity->getEntityTypeId());
     $default_revision_id = $this->moderationInformation->getDefaultRevisionId($entity->getEntityTypeId(), $entity->id());
     $default_revision = $storage->loadRevision($default_revision_id);
-    $revision = $this->prepareNewRevision($default_revision, $this->t('Used the Moderation Sidebar to discard the current draft.'));
+    if ($form_state->getValue('revision_log_toggle')) {
+      $revision_log = $form_state->getValue('revision_log');
+    }
+    else {
+      $revision_log = $this->t('Used the Moderation Sidebar to discard the current draft');
+    }
+    $revision = $this->prepareNewRevision($default_revision, $revision_log);
     $revision->save();
     $this->messenger()->addMessage($this->t('The draft has been discarded successfully.'));
 
@@ -182,7 +213,13 @@ class QuickTransitionForm extends FormBase {
     $state = $transitions[$element['#id']]->to();
     $state_id = $state->id();
 
-    $revision = $this->prepareNewRevision($entity, $this->t('Used the Moderation Sidebar to change the state to "@state".', ['@state' => $state->label()]));
+    if ($form_state->getValue('revision_log_toggle')) {
+      $revision_log = $form_state->getValue('revision_log');
+    }
+    else {
+      $revision_log = $this->t('Used the Moderation Sidebar to change the state to "@state".', ['@state' => $state->label()]);
+    }
+    $revision = $this->prepareNewRevision($entity, $revision_log);
     $revision->set('moderation_state', $state_id);
     $revision->save();
 

@@ -216,20 +216,15 @@ class ModerationSidebarController extends ControllerBase {
       }
 
       // Show an edit link if this is the latest revision.
-      if ($is_latest && !$this->moderationInformation->isLiveRevision($entity)) {
-        $build['actions']['edit_draft'] = [
-          '#title' => $this->t('Edit draft'),
+      if ($is_latest) {
+        $build['actions']['edit'] = [
+          '#title' => $this->moderationInformation->isLiveRevision($entity) ? $this->t('Edit content') : $this->t('Edit draft'),
           '#type' => 'link',
           '#url' => $entity->toLink(NULL, 'edit-form')->getUrl(),
           '#attributes' => [
             'class' => ['moderation-sidebar-link', 'button'],
           ],
         ];
-      }
-
-      // Provide a list of actions representing transitions for this revision.
-      if ($is_latest) {
-        $build['actions']['quick_draft_form'] = $this->formBuilder()->getForm(QuickTransitionForm::class, $entity);
       }
 
       // Only show the entity delete action on the default revision.
@@ -241,13 +236,14 @@ class ModerationSidebarController extends ControllerBase {
           '#attributes' => [
             'class' => ['moderation-sidebar-link', 'button', 'button--danger'],
           ],
+          '#weight' => 1,
         ];
       }
 
       // We maintain our own inline revisions tab.
       if ($entity_type_id === 'node' && \Drupal::service('access_check.node.revision')->checkAccess($entity, \Drupal::currentUser()->getAccount())) {
         $build['actions']['version_history'] = [
-          '#title' => $this->t('Revisions'),
+          '#title' => $this->t('Show revisions'),
           '#type' => 'link',
           '#url' => Url::fromRoute('moderation_sidebar.node.version_history', [
             'node' => $entity->id(),
@@ -275,6 +271,12 @@ class ModerationSidebarController extends ControllerBase {
             'data-dialog-renderer' => 'off_canvas',
           ],
         ];
+      }
+
+      // Provide a list of actions representing transitions for this revision.
+      if ($is_latest) {
+        $build['actions']['quick_draft_form'] = $this->formBuilder()->getForm(QuickTransitionForm::class, $entity);
+        $build['actions']['quick_draft_form']['#weight'] = 2;
       }
     }
 
