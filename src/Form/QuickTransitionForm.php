@@ -5,6 +5,8 @@ namespace Drupal\moderation_sidebar\Form;
 use Drupal\content_moderation\ModerationInformationInterface;
 use Drupal\content_moderation\StateTransitionValidationInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\ContentEntityStorageInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
 use Drupal\Core\Form\FormBase;
@@ -139,16 +141,12 @@ class QuickTransitionForm extends FormBase {
   public function discardDraft(array &$form, FormStateInterface $form_state) {
     /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
     $entity = $form_state->get('entity');
+    $storage = $this->entityTypeManager->getStorage($entity->getEntityTypeId());
     $default_revision_id = $this->moderationInformation->getDefaultRevisionId($entity->getEntityTypeId(), $entity->id());
-    $default_revision = $this->entityTypeManager->getStorage($entity->getEntityTypeId())->loadRevision($default_revision_id);
-    if ($default_revision instanceof RevisionLogInterface) {
-      $default_revision->setRevisionLogMessage($this->t('Used the Moderation Sidebar to delete the current draft.'));
-      $default_revision->setRevisionCreationTime(time());
-      $default_revision->setRevisionUserId($this->currentUser()->id());
-      $default_revision->setNewRevision();
-    }
-    $default_revision->save();
-    drupal_set_message($this->t('The draft has been discarded successfully.'));
+    $default_revision = $storage->loadRevision($default_revision_id);
+    $revision = $this->prepareNewRevision($default_revision, $this->t('Used the Moderation Sidebar to discard the current draft.'));
+    $revision->save();
+    $this->messenger()->addMessage($this->t('The draft has been discarded successfully.'));
 
     // There is no generic entity route to view a single revision, but we know
     // that the node module support this.
@@ -157,7 +155,7 @@ class QuickTransitionForm extends FormBase {
         'node' => $entity->id(),
         'node_revision' => $entity->getRevisionId(),
       ])->toString();
-      drupal_set_message($this->t('<a href="@url">You can view an archive of the draft by clicking here.</a>', ['@url' => $url]));
+      $this->messenger()->addMessage($this->t('<a href="@url">You can view an archive of the draft by clicking here.</a>', ['@url' => $url]));
     }
 
     $form_state->setRedirectUrl($entity->toLink()->getUrl());
@@ -180,22 +178,15 @@ class QuickTransitionForm extends FormBase {
       return;
     }
 
-    /** @var \Drupal\content_moderation\Entity\ContentModerationStateInterface $state */
+    /** @var \Drupal\content_moderation\ContentModerationState $state */
     $state = $transitions[$element['#id']]->to();
     $state_id = $state->id();
 
-    $entity->set('moderation_state', $state_id);
+    $revision = $this->prepareNewRevision($entity, $this->t('Used the Moderation Sidebar to change the state to "@state".', ['@state' => $state->label()]));
+    $revision->set('moderation_state', $state_id);
+    $revision->save();
 
-    if ($entity instanceof RevisionLogInterface) {
-      $entity->setRevisionLogMessage($this->t('Used the Moderation Sidebar to change the state to "@state".', ['@state' => $state->label()]));
-      $entity->setRevisionCreationTime(time());
-      $entity->setRevisionUserId($this->currentUser()->id());
-      $entity->setNewRevision();
-    }
-
-    $entity->save();
-
-    drupal_set_message($this->t('The moderation state has been updated.'));
+    $this->messenger()->addMessage($this->t('The moderation state has been updated.'));
 
     if ($state->isPublishedState()) {
       $form_state->setRedirectUrl($entity->toLink()->getUrl());
@@ -220,6 +211,31 @@ class QuickTransitionForm extends FormBase {
     $state_id = $entity->moderation_state->get(0)->getValue()['value'];
     $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
     return $workflow->getTypePlugin()->getState($state_id);
+  }
+
+  /**
+   * Prepares a new revision of a given entity, if applicable.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   An entity.
+   * @param string|\Drupal\Core\StringTranslation\TranslatableMarkup $message
+   *   A revision log message to set.
+   *
+   * @return \Drupal\Core\Entity\EntityInterface
+   *   The moderation state for the given entity.
+   */
+  protected function prepareNewRevision(EntityInterface $entity, $message) {
+    $storage = $this->entityTypeManager->getStorage($entity->getEntityTypeId());
+    if ($storage instanceof ContentEntityStorageInterface) {
+      $revision = $storage->createRevision($entity);
+      if ($revision instanceof RevisionLogInterface) {
+        $revision->setRevisionLogMessage($message);
+        $revision->setRevisionCreationTime(\Drupal::time()->getRequestTime());
+        $revision->setRevisionUserId($this->currentUser()->id());
+      }
+      return $revision;
+    }
+    return $entity;
   }
 
 }
