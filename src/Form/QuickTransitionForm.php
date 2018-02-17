@@ -225,13 +225,11 @@ class QuickTransitionForm extends FormBase {
 
     $this->messenger()->addMessage($this->t('The moderation state has been updated.'));
 
-    if ($state->isPublishedState()) {
-      $form_state->setRedirectUrl($entity->toLink()->getUrl());
+    if (!$this->moderationInformation->hasPendingRevision($entity)) {
+      $form_state->setRedirectUrl($entity->toUrl());
     }
     else {
-      $entity_type_id = $entity->getEntityTypeId();
-      $params = [$entity_type_id => $entity->id()];
-      $form_state->setRedirect("entity.{$entity_type_id}.latest_version", $params);
+      $form_state->setRedirectUrl($entity->toUrl('latest-version'));
     }
   }
 
