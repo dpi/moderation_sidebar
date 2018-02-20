@@ -511,13 +511,17 @@ class ModerationSidebarController extends ControllerBase {
         // If this is a moderated node, we provide buttons for certain actions.
         $duplicated_tab = preg_match('/^.*(canonical|edit_form|delete_form|latest_version_tab|entity\.node\.version_history|content_translation_overview)$/', $name);
         if (!$this->moderationInformation->isModeratedEntity($entity) || !$duplicated_tab) {
+          $attributes = [];
+          if (isset($tab['#link']['localized_options']['attributes'])) {
+            $attributes = $tab['#link']['localized_options']['attributes'];
+          }
+          $attributes['class'][] = 'moderation-sidebar-link';
+          $attributes['class'][] = 'button';
           $tabs[$name] = [
             '#title' => $tab['#link']['title'],
             '#type' => 'link',
             '#url' => $tab['#link']['url'],
-            '#attributes' => [
-              'class' => ['moderation-sidebar-link', 'button'],
-            ],
+            '#attributes' => $attributes,
           ];
         }
       }
