@@ -2,19 +2,24 @@
 
 namespace Drupal\Tests\moderation_sidebar\FunctionalJavascript;
 
-use Drupal\FunctionalJavascriptTests\JavascriptTestBase;
+use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
 
 /**
  * Contains Moderation Sidebar integration tests.
  *
  * @group moderation_sidebar
  */
-class ModerationSidebarTest extends JavascriptTestBase {
+class ModerationSidebarTest extends WebDriverTestBase {
 
   /**
    * {@inheritdoc}
    */
-  public static $modules = ['toolbar', 'moderation_sidebar', 'node'];
+  public static $modules = [
+    'toolbar',
+    'moderation_sidebar',
+    'node',
+    'moderation_sidebar_test',
+  ];
 
   /**
    * {@inheritdoc}
