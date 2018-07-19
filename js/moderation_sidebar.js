@@ -11,7 +11,7 @@
       // object is stored in form state and we don't want to save something
       // that's outdated.
       $('body').once('moderation-sidebar-init').each(function () {
-        if (Drupal.quickedit.collections.entities) {
+        if (typeof Drupal.quickedit !== 'undefined' && Drupal.quickedit.collections.entities) {
           Drupal.quickedit.collections.entities.on('change:isCommitting', function (model) {
             if (model.get('isCommitting') === true && $('.moderation-sidebar-container').length) {
               $('.toolbar-icon-moderation-sidebar').trigger('click', {reload: true});
