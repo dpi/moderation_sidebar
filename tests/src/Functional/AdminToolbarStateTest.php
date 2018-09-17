@@ -7,6 +7,8 @@ use Drupal\Tests\BrowserTestBase;
 use Drupal\Tests\content_moderation\Traits\ContentModerationTestTrait;
 
 /**
+ * Contains test for the toolbar state label.
+ *
  * @group moderation_sidebar
  */
 class AdminToolbarStateTest extends BrowserTestBase {
