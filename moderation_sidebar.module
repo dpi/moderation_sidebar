@@ -6,6 +6,7 @@
  */
 
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityPublishedInterface;
 use Drupal\Core\Url;
 
 /**
@@ -62,13 +63,23 @@ function moderation_sidebar_toolbar() {
   if ($moderation_information->isModeratedEntity($entity)) {
     $is_published = $moderation_information->isLiveRevision($entity);
   }
-  elseif ($entity->hasField('status')) {
-    $is_published = $entity->get('status');
+  elseif ($entity instanceof EntityPublishedInterface) {
+    $is_published = $entity->isPublished();
   }
-  $state_label = $is_published ? 'Published' : 'Draft';
+
+  if ($moderation_information->isModeratedEntity($entity)) {
+    $state_label = $moderation_information
+      ->getWorkflowForEntity($entity)
+      ->getTypePlugin()
+      ->getState($entity->moderation_state->value)
+      ->label();
+  }
+  else {
+    $state_label = $is_published ? t('Published') : t('Draft');
+  }
 
   if (!$is_latest) {
-    $state_label = 'Draft available';
+    $state_label = t('Draft available');
     $label_class = 'moderation-label-draft-available';
   }
   else {
