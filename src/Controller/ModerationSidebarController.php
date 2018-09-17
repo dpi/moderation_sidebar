@@ -216,7 +216,7 @@ class ModerationSidebarController extends ControllerBase {
       }
 
       // Show an edit link if this is the latest revision.
-      if ($is_latest) {
+      if ($is_latest && $entity->access('update')) {
         $build['actions']['edit'] = [
           '#title' => $this->moderationInformation->isLiveRevision($entity) ? $this->t('Edit content') : $this->t('Edit draft'),
           '#type' => 'link',
