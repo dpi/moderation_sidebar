@@ -522,6 +522,7 @@ class ModerationSidebarController extends ControllerBase {
             '#type' => 'link',
             '#url' => $tab['#link']['url'],
             '#attributes' => $attributes,
+            '#access' => $tab['#access'],
           ];
         }
       }
