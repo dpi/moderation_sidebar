@@ -134,7 +134,7 @@ class QuickTransitionForm extends FormBase {
       ];
       $form['revision_log'] = [
         '#type' => 'textarea',
-        '#description' => $this->t('Briefly describe this state change.'),
+        '#placeholder' => $this->t('Briefly describe this state change.'),
         '#attributes' => [
           'class' => ['moderation-sidebar-revision-log'],
         ],
