@@ -142,7 +142,14 @@ class ModerationSidebarController extends ControllerBase {
   public function sideBar(ContentEntityInterface $entity) {
     // Load the correct translation.
     $language = $this->languageManager()->getCurrentLanguage();
-    $entity = $entity->getTranslation($language->getId());
+    $default_language = $this->languageManager()->getDefaultLanguage();
+
+    if ($entity->hasTranslation($language->getId())) {
+      $entity = $entity->getTranslation($language->getId());
+    }
+    elseif ($entity->hasTranslation($default_language->getId())) {
+      $entity = $entity->getTranslation($default_language->getId());
+    }
     $entity_type_id = $entity->getEntityTypeId();
 
     $build = [
