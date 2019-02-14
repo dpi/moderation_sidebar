@@ -19,6 +19,8 @@ class ModerationSidebarTest extends WebDriverTestBase {
     'moderation_sidebar',
     'node',
     'moderation_sidebar_test',
+    'content_translation',
+    'path',
   ];
 
   /**
@@ -48,8 +50,26 @@ class ModerationSidebarTest extends WebDriverTestBase {
       'view latest version',
       'use editorial transition create_new_draft',
       'use editorial transition publish',
+      'create url aliases',
+      'administer themes',
+      'administer languages',
+      'administer content translation',
+      'create content translations',
+      'update content translations',
+      'delete content translations',
+      'translate any entity',
     ]);
     $this->drupalLogin($user);
+
+    // Enable admin theme for content forms.
+    $edit = ['use_admin_theme' => TRUE];
+    $this->drupalPostForm('admin/appearance', $edit, 'Save configuration');
+    // Add German language.
+    $edit = ['predefined_langcode' => 'de'];
+    $this->drupalPostForm('admin/config/regional/language/add', $edit, t('Add language'));
+    // Enable translations for nodes.
+    $edit = ['entity_types[node]' => 'node', 'settings[node][article][translatable]' => TRUE];
+    $this->drupalPostForm('admin/config/regional/content-language', $edit, 'Save configuration');
 
     drupal_flush_all_caches();
   }
@@ -90,6 +110,31 @@ class ModerationSidebarTest extends WebDriverTestBase {
     $this->assertSession()->assertWaitOnAjaxRequest();
     $this->click('#moderation-sidebar-discard-draft');
     $this->assertSession()->pageTextContains('The draft has been discarded successfully');
+
+    // Create a node with a draft translation.
+    $this->drupalGet('node/add/article');
+    $this->clickLink('URL alias');
+    $this->submitForm([
+      'title[0][value]' => 'Test article EN',
+      'path[0][alias]' => '/test-article-en',
+      'moderation_state[0][state]' => 'published',
+    ], 'Save');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->clickLink('Translate');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->clickLink('Create German translation');
+    $this->clickLink('URL alias');
+    $this->submitForm([
+      'title[0][value]' => 'Test article DE',
+      'path[0][alias]' => '/test-article-de',
+      'moderation_state[0][state]' => 'draft',
+    ], 'Save');
+
+    // Check if the sidebar works on the draft translation.
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->assertRaw('<div class="moderation-sidebar-container"');
   }
 
 }
