@@ -83,10 +83,9 @@ class QuickTransitionForm extends FormBase {
       return [];
     }
 
-    // Allow users to discard Drafts.
-    if ($this->moderationInformation->isLatestRevision($entity)
-      && !$this->moderationInformation->isLiveRevision($entity)
-      && !$entity->isDefaultRevision()) {
+    // If this is not the default revision and is the latest translation
+    // affected revision, then show a discard draft button.
+    if (!$entity->isDefaultRevision() && $entity->isLatestTranslationAffectedRevision()) {
       $form['discard_draft'] = [
         '#type' => 'submit',
         '#id' => 'moderation-sidebar-discard-draft',

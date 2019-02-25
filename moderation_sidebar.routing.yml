@@ -14,7 +14,7 @@ moderation_sidebar.sidebar:
 moderation_sidebar.sidebar_latest:
   path: '/moderation-sidebar/{entity_type}/{entity}/latest'
   defaults:
-    _controller: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::sideBarLatest'
+    _controller: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::sidebar'
     _title_callback: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::title'
   requirements:
     _permission: 'use moderation sidebar'
@@ -23,6 +23,7 @@ moderation_sidebar.sidebar_latest:
     parameters:
       entity:
         type: entity:{entity_type}
+        load_latest_revision: TRUE
 
 moderation_sidebar.node.version_history:
   path: '/moderation_sidebar/node/{node}/revisions'

@@ -78,6 +78,7 @@ class ModerationSidebarTest extends WebDriverTestBase {
    * Tests that the Moderation Sidebar is working as expected.
    */
   public function testModerationSidebar() {
+    $assert_session = $this->assertSession();
     // Create a new article.
     $node = $this->createNode([
       'type' => 'article',
@@ -111,30 +112,294 @@ class ModerationSidebarTest extends WebDriverTestBase {
     $this->click('#moderation-sidebar-discard-draft');
     $this->assertSession()->pageTextContains('The draft has been discarded successfully');
 
-    // Create a node with a draft translation.
+    // SCENARIO 1: Published EN, Draft EN, Published EN.
+    // Create a new article.
+    $node = $this->createNode([
+      'type' => 'article',
+      'moderation_state' => 'published',
+    ]);
+    // Node published, Published tray.
+    $this->drupalGet('node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    // Actions for a published node.
+    $assert_session->elementExists('css', '.moderation-sidebar-link#create_new_draft');
+    $assert_session->pageTextContainsOnce('Delete content');
+    // Actions for draft that should not be present.
+    $assert_session->elementNotExists('css', '.moderation-sidebar-link#publish');
+    $assert_session->elementNotExists('css', '.moderation-sidebar-link#moderation-sidebar-discard-draft');
+    $assert_session->pageTextNotContains('View live content');
+    $assert_session->pageTextNotContains('Edit draft');
+
+    // Node draft, Draft tray.
+    $this->submitForm([], 'Create New Draft');
+    $this->drupalGet('node/' . $node->id() . '/latest');
+    $assert_session->elementExists('css', '.moderation-label-draft[data-label="Draft"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    // Actions for a draft node.
+    $assert_session->elementExists('css', '.moderation-sidebar-link#publish');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#moderation-sidebar-discard-draft');
+    $assert_session->pageTextContainsOnce('View live content');
+    $assert_session->pageTextContainsOnce('Edit draft');
+    // Actions for published that should not be present.
+    $assert_session->elementNotExists('css', '.moderation-sidebar-link#create_new_draft');
+
+    // Node draft, Draft available tray.
+    $this->drupalGet('node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-draft-available[data-label="Draft available"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    // Actions when there is a draft available node.
+    $assert_session->pageTextContainsOnce('View existing draft');
+    // Actions for draft that should not be present.
+    $assert_session->elementNotExists('css', '.moderation-sidebar-link#publish');
+    $assert_session->elementNotExists('css', '.moderation-sidebar-link#moderation-sidebar-discard-draft');
+    $assert_session->pageTextNotContains('View live content');
+    $assert_session->pageTextContains('Edit draft');
+    // Actions for published that should not be present.
+    $assert_session->elementNotExists('css', '.moderation-sidebar-link#create_new_draft');
+
+    // Node published, Published tray.
+    $this->drupalGet('node/' . $node->id() . '/latest');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->submitForm([], 'Publish');
+    $this->drupalGet('node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    // Actions for a published node.
+    $assert_session->elementExists('css', '.moderation-sidebar-link#create_new_draft');
+    $assert_session->pageTextContainsOnce('Delete content');
+    // Actions for draft that should not be present.
+    $assert_session->elementNotExists('css', '.moderation-sidebar-link#publish');
+    $assert_session->elementNotExists('css', '.moderation-sidebar-link#moderation-sidebar-discard-draft');
+    $assert_session->pageTextNotContains('View live content');
+    $assert_session->pageTextNotContains('Edit draft');
+
+    // Viewing the node in an not existent translation should show the original.
+    $this->drupalGet('de/node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $assert_session->elementExists('css', '.moderation-sidebar-link#create_new_draft');
+
+    // SCENARIO 2: Published EN, Published DE, Draft EN.
     $this->drupalGet('node/add/article');
     $this->clickLink('URL alias');
     $this->submitForm([
-      'title[0][value]' => 'Test article EN',
-      'path[0][alias]' => '/test-article-en',
+      'title[0][value]' => 'Llama EN',
       'moderation_state[0][state]' => 'published',
     ], 'Save');
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Llama EN');
+    $this->clickLink('Translate');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->clickLink('Create German translation');
+    $this->submitForm([
+      'title[0][value]' => 'Llama DE',
+      'moderation_state[0][state]' => 'published',
+    ], 'Save');
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Llama DE');
+    $node = $this->getNodeByTitle('Llama EN');
+    $this->drupalGet('node/' . $node->id());
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->submitForm([], 'Create New Draft');
+
+    // Draft EN, Draft tray.
+    $this->drupalGet('node/' . $node->id() . '/latest');
+    $assert_session->elementExists('css', '.moderation-label-draft[data-label="Draft"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Llama EN');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#publish');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#moderation-sidebar-discard-draft');
+    $assert_session->pageTextContainsOnce('View live content');
+    $assert_session->pageTextContainsOnce('Edit draft');
+
+    // Published EN, Draft available tray.
+    $this->drupalGet('node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-draft-available[data-label="Draft available"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Llama EN');
+    $assert_session->pageTextContainsOnce('View existing draft');
+
+    // Published DE, Published tray.
+    $this->drupalGet('de/node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Llama DE');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#create_new_draft');
+
+    // SCENARIO 3: Published EN, Draft DE.
+    $this->drupalGet('node/add/article');
+    $this->clickLink('URL alias');
+    $this->submitForm([
+      'title[0][value]' => 'Alpaca EN',
+      'moderation_state[0][state]' => 'published',
+    ], 'Save');
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Alpaca EN');
+    $this->clickLink('Translate');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->clickLink('Create German translation');
+    $this->submitForm([
+      'title[0][value]' => 'Alpaca DE',
+      'moderation_state[0][state]' => 'draft',
+    ], 'Save');
+
+    // DE Draft, Draft tray.
+    $assert_session->elementExists('css', '.moderation-label-draft[data-label="Draft"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Alpaca DE');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#publish');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#moderation-sidebar-discard-draft');
+    $assert_session->pageTextContainsOnce('View live content');
+    $assert_session->pageTextContainsOnce('Edit draft');
+
+    // EN Published, Published tray.
+    $node = $this->getNodeByTitle('Alpaca EN');
+    $this->drupalGet('node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Alpaca EN');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#create_new_draft');
+    $assert_session->pageTextContainsOnce('Delete content');
+
+    // SCENARIO 4: Published EN, Draft EN, Published DE (from draft).
+    $this->drupalGet('node/add/article');
+    $this->clickLink('URL alias');
+    $this->submitForm([
+      'title[0][value]' => 'Vicuna EN',
+      'moderation_state[0][state]' => 'published',
+    ], 'Save');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->submitForm([], 'Create New Draft');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Vicuna EN');
+    $this->clickLink('Translate');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->clickLink('Create German translation');
+    $this->submitForm([
+      'title[0][value]' => 'Vicuna DE',
+      'moderation_state[0][state]' => 'published',
+    ], 'Save');
+
+    // EN Published, Draft available tray.
+    $node = $this->getNodeByTitle('Vicuna EN');
+    $this->drupalGet('node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-draft-available[data-label="Draft available"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Vicuna EN');
+    $assert_session->pageTextContainsOnce('View existing draft');
+
+    // EN Draft, Draft tray.
+    $this->drupalGet('node/' . $node->id() . '/latest');
+    $assert_session->elementExists('css', '.moderation-label-draft[data-label="Draft"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Vicuna EN');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#publish');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#moderation-sidebar-discard-draft');
+    $assert_session->pageTextContainsOnce('View live content');
+    $assert_session->pageTextContainsOnce('Edit draft');
+
+    // DE Published, Published tray.
+    $this->drupalGet('de/node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Vicuna DE');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#create_new_draft');
+    $assert_session->pageTextContainsOnce('Delete content');
+
+    // SCENARIO 5: Published EN, Draft EN, Published DE (from published).
+    $this->drupalGet('node/add/article');
+    $this->clickLink('URL alias');
+    $this->submitForm([
+      'title[0][value]' => 'Camel EN',
+      'moderation_state[0][state]' => 'published',
+    ], 'Save');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->submitForm([], 'Create New Draft');
+    $assert_session->elementExists('css', '.moderation-label-draft[data-label="Draft"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Camel EN');
+    $node = $this->getNodeByTitle('Camel EN');
+    $this->drupalGet('node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-draft-available[data-label="Draft available"]');
     $this->clickLink('Tasks');
     $this->assertSession()->assertWaitOnAjaxRequest();
     $this->clickLink('Translate');
     $this->assertSession()->assertWaitOnAjaxRequest();
     $this->clickLink('Create German translation');
-    $this->clickLink('URL alias');
     $this->submitForm([
-      'title[0][value]' => 'Test article DE',
-      'path[0][alias]' => '/test-article-de',
-      'moderation_state[0][state]' => 'draft',
+      'title[0][value]' => 'Camel DE',
+      'moderation_state[0][state]' => 'published',
     ], 'Save');
 
-    // Check if the sidebar works on the draft translation.
+    // EN Published, Draft available tray.
+    $node = $this->getNodeByTitle('Camel EN');
+    $this->drupalGet('node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-draft-available[data-label="Draft available"]');
     $this->clickLink('Tasks');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    $this->assertRaw('<div class="moderation-sidebar-container"');
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Camel EN');
+    $assert_session->pageTextContainsOnce('View existing draft');
+
+    // EN Draft, Draft tray.
+    $this->drupalGet('node/' . $node->id() . '/latest');
+    $assert_session->elementExists('css', '.moderation-label-draft[data-label="Draft"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Camel EN');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#publish');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#moderation-sidebar-discard-draft');
+    $assert_session->pageTextContainsOnce('View live content');
+    $assert_session->pageTextContainsOnce('Edit draft');
+
+    // DE Published, Published tray.
+    $this->drupalGet('de/node/' . $node->id());
+    $assert_session->elementExists('css', '.moderation-label-published[data-label="Published"]');
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $title = $this->getSession()->getPage()->find('css', '.ui-dialog-title');
+    $this->assertEquals($title->getText(), 'Camel DE');
+    $assert_session->elementExists('css', '.moderation-sidebar-link#create_new_draft');
   }
 
 }

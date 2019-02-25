@@ -50,20 +50,16 @@ function moderation_sidebar_toolbar() {
 
   // We maintain two separate routes depending on what context we're viewing
   // the entity in.
-  $is_latest = $moderation_information->isLatestRevision($entity);
-  if ($is_latest) {
-    $url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
+  if ($moderation_information->hasPendingRevision($entity) && $entity->isDefaultRevision()) {
+    $url = Url::fromRoute('moderation_sidebar.sidebar', $params);
   }
   else {
-    $url = Url::fromRoute('moderation_sidebar.sidebar', $params);
+    $url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
   }
 
   // Grab the state label for the quick hover feature.
   $is_published = TRUE;
-  if ($moderation_information->isModeratedEntity($entity)) {
-    $is_published = $moderation_information->isLiveRevision($entity);
-  }
-  elseif ($entity instanceof EntityPublishedInterface) {
+  if ($entity instanceof EntityPublishedInterface) {
     $is_published = $entity->isPublished();
   }
 
@@ -78,7 +74,7 @@ function moderation_sidebar_toolbar() {
     $state_label = $is_published ? t('Published') : t('Draft');
   }
 
-  if (!$is_latest) {
+  if ($moderation_information->hasPendingRevision($entity) && $entity->isDefaultRevision()) {
     $state_label = t('Draft available');
     $label_class = 'moderation-label-draft-available';
   }

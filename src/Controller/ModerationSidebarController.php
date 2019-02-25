@@ -8,6 +8,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
+use Drupal\Core\Entity\TranslatableRevisionableStorageInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Menu\LocalTaskManager;
@@ -141,16 +142,31 @@ class ModerationSidebarController extends ControllerBase {
    */
   public function sideBar(ContentEntityInterface $entity) {
     // Load the correct translation.
-    $language = $this->languageManager()->getCurrentLanguage();
-    $default_language = $this->languageManager()->getDefaultLanguage();
-
-    if ($entity->hasTranslation($language->getId())) {
-      $entity = $entity->getTranslation($language->getId());
-    }
-    elseif ($entity->hasTranslation($default_language->getId())) {
-      $entity = $entity->getTranslation($default_language->getId());
-    }
+    $langcode = $entity->language()->getId();
     $entity_type_id = $entity->getEntityTypeId();
+
+    /** @var \Drupal\Core\Entity\TranslatableRevisionableStorageInterface $storage */
+    // Figure ouf this is the latest revision of this entity for this language.
+    $storage = \Drupal::entityTypeManager()->getStorage($entity_type_id);
+    $is_latest = TRUE;
+    if ($storage instanceof TranslatableRevisionableStorageInterface) {
+      $latest_revision_id = $storage->getLatestTranslationAffectedRevisionId($entity->id(), $langcode);
+
+      // If the latest revision is the same as the entity revision, it is the
+      // last revision. If it is older, then that means that there is a newer
+      // default revision from another language, use the default revision in
+      // that case.
+      if ($latest_revision_id < $entity->getRevisionId()) {
+        $entity = $storage->load($entity->id())->getTranslation($langcode);
+        $is_latest = TRUE;
+      }
+      elseif ($latest_revision_id == $entity->getRevisionId()) {
+        $is_latest = TRUE;
+      }
+      else {
+        $is_latest = FALSE;
+      }
+    }
 
     $build = [
       '#type' => 'container',
@@ -194,10 +210,9 @@ class ModerationSidebarController extends ControllerBase {
     ];
 
     if ($this->moderationInformation->isModeratedEntity($entity)) {
-      $is_latest = $this->moderationInformation->isLatestRevision($entity);
 
       // Provide a link to the latest entity.
-      if (!$is_latest) {
+      if ($this->moderationInformation->hasPendingRevision($entity) && $entity->isDefaultRevision()) {
         $build['actions']['view_latest'] = [
           '#title' => $this->t('View existing draft'),
           '#type' => 'link',
@@ -211,7 +226,7 @@ class ModerationSidebarController extends ControllerBase {
       }
 
       // Provide a link to the default display of the entity.
-      if (!$entity->isDefaultRevision()) {
+      if ($this->moderationInformation->hasPendingRevision($entity) && !$entity->isDefaultRevision()) {
         $build['actions']['view_default'] = [
           '#title' => $this->t('View live content'),
           '#type' => 'link',
@@ -222,10 +237,10 @@ class ModerationSidebarController extends ControllerBase {
         ];
       }
 
-      // Show an edit link if this is the latest revision.
-      if ($is_latest && $entity->access('update')) {
+      // Show an edit link.
+      if ($entity->access('update')) {
         $build['actions']['edit'] = [
-          '#title' => $this->moderationInformation->isLiveRevision($entity) ? $this->t('Edit content') : $this->t('Edit draft'),
+          '#title' => !$this->moderationInformation->hasPendingRevision($entity) ? $this->t('Edit content') : $this->t('Edit draft'),
           '#type' => 'link',
           '#url' => $entity->toLink(NULL, 'edit-form')->getUrl(),
           '#attributes' => [
@@ -294,20 +309,6 @@ class ModerationSidebarController extends ControllerBase {
     $this->moduleHandler->alter('moderation_sidebar', $build, $entity);
 
     return $build;
-  }
-
-  /**
-   * Displays the moderation sidebar for the latest revision of an entity.
-   *
-   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
-   *   A moderated entity.
-   *
-   * @return array
-   *   The render array for the sidebar.
-   */
-  public function sideBarLatest(ContentEntityInterface $entity) {
-    $entity = $this->moderationInformation->getLatestRevision($entity->getEntityTypeId(), $entity->id());
-    return $this->sideBar($entity);
   }
 
   /**
