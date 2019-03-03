@@ -47,3 +47,17 @@ moderation_sidebar.translate:
     parameters:
       entity:
         type: entity:{entity_type}
+
+moderation_sidebar.translate_latest:
+  path: '/moderation_sidebar/{entity_type}/{entity}/translate/latest'
+  defaults:
+    _title: 'Translate'
+    _controller: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::translateOverview'
+  requirements:
+    _permission: 'use moderation sidebar'
+    _entity_access: 'entity.view'
+  options:
+    parameters:
+      entity:
+        type: entity:{entity_type}
+        load_latest_revision: TRUE

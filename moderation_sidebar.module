@@ -137,5 +137,12 @@ function moderation_sidebar_theme() {
         'revision_link' => NULL,
       ],
     ],
+    'moderation_sidebar_translations' => [
+      'variables' => [
+        'current_language' => NULL,
+        'translations' => NULL,
+        'view_all' => NULL,
+      ],
+    ],
   ];
 }

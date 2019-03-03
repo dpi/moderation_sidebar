@@ -176,20 +176,9 @@ class ModerationSidebarController extends ControllerBase {
     ];
 
     // Add information about this Entity to the top of the bar.
-    if ($this->moderationInformation->isModeratedEntity($entity)) {
-      $state = $this->getModerationState($entity);
-      $state_label = $state->label();
-    }
-    elseif ($entity->hasField('status')) {
-      $state_label = $entity->get('status') ? $this->t('Published') : $this->t('Unpublished');
-    }
-    else {
-      $state_label = $this->t('Published');
-    }
-
     $build['info'] = [
       '#theme' => 'moderation_sidebar_info',
-      '#state' => $state_label,
+      '#state' => $this->getStateLabel($entity),
     ];
 
     if ($entity instanceof RevisionLogInterface) {
@@ -283,7 +272,7 @@ class ModerationSidebarController extends ControllerBase {
         $build['actions']['translate'] = [
           '#title' => $this->t('Translate'),
           '#type' => 'link',
-          '#url' => Url::fromRoute('moderation_sidebar.translate', [
+          '#url' => Url::fromRoute($is_latest ? 'moderation_sidebar.translate_latest' : 'moderation_sidebar.translate', [
             'entity_type' => $entity_type_id,
             'entity' => $entity->id(),
           ], ['query' => ['latest' => $is_latest]]),
@@ -413,13 +402,19 @@ class ModerationSidebarController extends ControllerBase {
       throw new AccessDeniedHttpException();
     }
 
-    $build = $this->getBackButton($entity);
+    $langcode = $entity->language()->getId();
+    $entity_type_id = $entity->getEntityTypeId();
 
-    $build[] = [
-      '#markup' => t('<p>The current language is <strong>@language</strong></p>', [
-        '@language' => $entity->language()->getName(),
-      ]),
-    ];
+    /** @var \Drupal\Core\Entity\TranslatableRevisionableStorageInterface $storage */
+    $storage = \Drupal::entityTypeManager()->getStorage($entity_type_id);
+    if ($storage instanceof TranslatableRevisionableStorageInterface) {
+      $latest_revision_id = $storage->getLatestTranslationAffectedRevisionId($entity->id(), $langcode);
+      if ($latest_revision_id < $entity->getRevisionId()) {
+        $entity = $storage->load($entity->id())->getTranslation($langcode);
+      }
+    }
+
+    $build = $this->getBackButton($entity);
 
     $can_create = $account->hasPermission('translate any entity');
     if (!$can_create) {
@@ -429,7 +424,7 @@ class ModerationSidebarController extends ControllerBase {
     }
 
     $languages = $this->languageManager()->getLanguages();
-    $translations = $entity->getTranslationLanguages();
+    $translation_languages = $entity->getTranslationLanguages();
 
     if ($this->languageManager()->isMultilingual()) {
       // Determine whether the current entity is translatable.
@@ -441,47 +436,115 @@ class ModerationSidebarController extends ControllerBase {
         }
       }
 
+      $translations = [];
       foreach ($languages as $language) {
         $langcode = $language->getId();
         if ($langcode === $entity->language()->getId()) {
           continue;
         }
-        if (array_key_exists($langcode, $translations)) {
-          $translation = $entity->getTranslation($langcode);
-          $build[] = [
-            '#title' => $this->t('View @language translation', [
-              '@language' => $language->getName(),
-            ]),
+        // Get the latest revision for the current $langcode.
+        if ($storage instanceof TranslatableRevisionableStorageInterface) {
+          $latest_revision_id = $storage->getLatestTranslationAffectedRevisionId($entity->id(), $langcode);
+          if ($latest_revision = $storage->loadRevision($latest_revision_id)) {
+            $latest_revision = $latest_revision->getTranslation($langcode);
+          }
+        }
+        else {
+          $latest_revision = $this->moderationInformation->getLatestRevision($entity_type_id, $entity->id())->getTranslation($langcode);
+        }
+        $latest_translation = FALSE;
+        $entity_has_translation = array_key_exists($langcode, $translation_languages);
+
+        // This would happen when a translation only has a draft revision.
+        if (!$entity_has_translation && $latest_revision) {
+          $latest_translation = TRUE;
+        }
+
+        if ($entity_has_translation || $latest_translation) {
+          $translation = !$latest_translation ? $entity->getTranslation($langcode) : $latest_revision;
+
+          $translation_links = [
+            '#title' => $this->t('View'),
             '#type' => 'link',
-            '#url' => $translation->toUrl(),
+            '#url' => $translation->toUrl($latest_translation ? 'latest-version' : 'canonical'),
             '#attributes' => [
               'class' => ['moderation-sidebar-link', 'button'],
+              'title' => $this->t('View: @label', ['@label' => $translation->label()]),
             ],
+          ];
+
+          if ($translation->access('edit', $account)) {
+            $translation_links[] = [
+              '#title' => $this->t('Edit'),
+              '#type' => 'link',
+              '#url' => $translation->toUrl('edit-form'),
+              '#attributes' => [
+                'class' => ['moderation-sidebar-link', 'button'],
+                'title' => $this->t('Edit: @label', ['@label' => $translation->label()]),
+              ],
+            ];
+          }
+
+          if ($latest_revision->getRevisionId() != $translation->getRevisionId() && $latest_revision->moderation_state->value == 'draft') {
+            $translation_links[] = [
+              '#title' => $this->t('View existing draft'),
+              '#type' => 'link',
+              '#url' => $translation->toUrl('latest-version'),
+              '#attributes' => [
+                'class' => ['moderation-sidebar-link', 'button'],
+                'title' => $this->t('View: @label', ['@label' => $latest_revision->label()]),
+              ],
+            ];
+          }
+
+          $translations[] = [
+            'language' => $language->getName(),
+            'state' => $this->getStateLabel($translation),
+            'links' => $translation_links,
           ];
         }
         elseif ($can_create && $translatable) {
-          $build[] = [
-            '#title' => $this->t('Create @language translation', [
-              '@language' => $language->getName(),
-            ]),
-            '#type' => 'link',
-            '#url' => Url::fromRoute(
-              "entity.$entity_type_id.content_translation_add",
+          $translations[] = [
+            'language' => $language->getName(),
+            'links' => [
               [
-                'source' => $entity->getUntranslated()->language()->getId(),
-                'target' => $language->getId(),
-                $entity_type_id => $entity->id(),
+                '#title' => $this->t('Create translation'),
+                '#type' => 'link',
+                '#url' => Url::fromRoute(
+                  "entity.$entity_type_id.content_translation_add",
+                  [
+                    'source' => $entity->getUntranslated()->language()->getId(),
+                    'target' => $language->getId(),
+                    $entity_type_id => $entity->id(),
+                  ],
+                  [
+                    'language' => $language,
+                  ]
+                ),
+                '#attributes' => [
+                  'class' => ['moderation-sidebar-link', 'button'],
+                ],
               ],
-              [
-                'language' => $language,
-              ]
-            ),
-            '#attributes' => [
-              'class' => ['moderation-sidebar-link', 'button'],
             ],
           ];
         }
       }
+
+      $build[] = [
+        '#theme' => 'moderation_sidebar_translations',
+        '#current_language' => $entity->language()->getName(),
+        '#translations' => $translations,
+        '#view_all' => [
+          '#title' => $this->t('View all translations'),
+          '#type' => 'link',
+          '#url' => Url::fromRoute('entity.node.content_translation_overview', [
+            'node' => $entity->id(),
+          ]),
+          '#attributes' => [
+            'class' => ['moderation-sidebar-link', 'button'],
+          ],
+        ],
+      ];
     }
 
     return $build;
@@ -599,6 +662,30 @@ class ModerationSidebarController extends ControllerBase {
     ];
 
     return $build;
+  }
+
+  /**
+   * Gets the Moderation State label of a given Entity.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   An entity.
+   *
+   * @return string
+   *   The state label.
+   */
+  protected function getStateLabel(ContentEntityInterface $entity) {
+    if ($this->moderationInformation->isModeratedEntity($entity)) {
+      $state = $this->getModerationState($entity);
+      $state_label = $state->label();
+    }
+    elseif ($entity instanceof EntityPublishedInterface) {
+      $state_label = $entity->isPublished() ? $this->t('Published') : $this->t('Unpublished');
+    }
+    else {
+      $state_label = $this->t('Published');
+    }
+
+    return $state_label;
   }
 
 }

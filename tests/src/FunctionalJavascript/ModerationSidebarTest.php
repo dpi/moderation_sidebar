@@ -200,7 +200,7 @@ class ModerationSidebarTest extends WebDriverTestBase {
     $this->assertEquals($title->getText(), 'Llama EN');
     $this->clickLink('Translate');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    $this->clickLink('Create German translation');
+    $this->clickLink('Create translation');
     $this->submitForm([
       'title[0][value]' => 'Llama DE',
       'moderation_state[0][state]' => 'published',
@@ -260,7 +260,7 @@ class ModerationSidebarTest extends WebDriverTestBase {
     $this->assertEquals($title->getText(), 'Alpaca EN');
     $this->clickLink('Translate');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    $this->clickLink('Create German translation');
+    $this->clickLink('Create translation');
     $this->submitForm([
       'title[0][value]' => 'Alpaca DE',
       'moderation_state[0][state]' => 'draft',
@@ -304,7 +304,7 @@ class ModerationSidebarTest extends WebDriverTestBase {
     $this->assertEquals($title->getText(), 'Vicuna EN');
     $this->clickLink('Translate');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    $this->clickLink('Create German translation');
+    $this->clickLink('Create translation');
     $this->submitForm([
       'title[0][value]' => 'Vicuna DE',
       'moderation_state[0][state]' => 'published',
@@ -364,7 +364,7 @@ class ModerationSidebarTest extends WebDriverTestBase {
     $this->assertSession()->assertWaitOnAjaxRequest();
     $this->clickLink('Translate');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    $this->clickLink('Create German translation');
+    $this->clickLink('Create translation');
     $this->submitForm([
       'title[0][value]' => 'Camel DE',
       'moderation_state[0][state]' => 'published',
