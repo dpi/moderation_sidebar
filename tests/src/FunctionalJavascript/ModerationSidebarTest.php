@@ -42,6 +42,7 @@ class ModerationSidebarTest extends WebDriverTestBase {
     $user = $this->drupalCreateUser([
       'access toolbar',
       'use moderation sidebar',
+      'administer moderation sidebar',
       'access content',
       'create article content',
       'edit any article content',
@@ -111,6 +112,18 @@ class ModerationSidebarTest extends WebDriverTestBase {
     $this->assertSession()->assertWaitOnAjaxRequest();
     $this->click('#moderation-sidebar-discard-draft');
     $this->assertSession()->pageTextContains('The draft has been discarded successfully');
+
+    $this->drupalGet('admin/config/user-interface/moderation-sidebar');
+    $this->assertSession()->checkboxNotChecked('workflows[editorial_workflow][disabled_transitions][create_new_draft]');
+    $this->submitForm(['workflows[editorial_workflow][disabled_transitions][create_new_draft]' => TRUE], 'Save configuration');
+
+    $this->drupalGet('node/' . $node->id());
+    $this->clickLink('Tasks');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->assertSession()->buttonNotExists('create_new_draft');
+
+    $this->drupalGet('admin/config/user-interface/moderation-sidebar');
+    $this->submitForm(['workflows[editorial_workflow][disabled_transitions][create_new_draft]' => FALSE], 'Save configuration');
 
     // SCENARIO 1: Published EN, Draft EN, Published EN.
     // Create a new article.

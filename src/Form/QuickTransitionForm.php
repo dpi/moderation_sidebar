@@ -101,6 +101,10 @@ class QuickTransitionForm extends FormBase {
     $form_state->set('entity', $entity);
 
     $transitions = $this->validation->getValidTransitions($entity, $this->currentUser());
+    $workflow = $this->moderationInformation->getWorkFlowForEntity($entity);
+    $disabled_transitions = $this->configFactory()
+      ->getEditable('moderation_sidebar.settings')
+      ->get('workflows.' . $workflow->id() . '_workflow.disabled_transitions');
 
     // Exclude self-transitions.
     /** @var \Drupal\content_moderation\Entity\ContentModerationStateInterface $current_state */
@@ -111,18 +115,24 @@ class QuickTransitionForm extends FormBase {
       return $transition->to()->id() != $current_state->id();
     });
 
+    $is_transition_enabled = FALSE;
     foreach ($transitions as $transition) {
-      $form[$transition->id()] = [
-        '#type' => 'submit',
-        '#id' => $transition->id(),
-        '#value' => $transition->label(),
-        '#attributes' => [
-          'class' => ['moderation-sidebar-link', 'button--primary'],
-        ],
-      ];
+      // Exclude disabled transitions.
+      if (empty($disabled_transitions[$transition->id()])) {
+        $form[$transition->id()] = [
+          '#type' => 'submit',
+          '#id' => $transition->id(),
+          '#value' => $transition->label(),
+          '#attributes' => [
+            'class' => ['moderation-sidebar-link', 'button--primary'],
+          ],
+        ];
+        $is_transition_enabled = TRUE;
+      }
     }
 
-    if (!empty($transitions)) {
+    // Show only, if at least one transition is enabled.
+    if ($is_transition_enabled) {
       $form['revision_log_toggle'] = [
         '#type' => 'checkbox',
         '#title' => $this->t('Use custom log message'),

@@ -61,3 +61,11 @@ moderation_sidebar.translate_latest:
       entity:
         type: entity:{entity_type}
         load_latest_revision: TRUE
+
+moderation_sidebar.settings:
+  path: '/admin/config/user-interface/moderation-sidebar'
+  defaults:
+    _form: '\Drupal\moderation_sidebar\Form\ModerationSidebarSettingsForm'
+    _title: 'Moderation Sidebar'
+  requirements:
+    _permission: 'administer moderation sidebar'
