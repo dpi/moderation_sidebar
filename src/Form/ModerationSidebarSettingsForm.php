@@ -17,7 +17,7 @@ class ModerationSidebarSettingsForm extends ConfigFormBase {
    * The entity type manager.
    *
    * @var Drupal\Core\Entity\EntityTypeManagerInterface
-  */
+   */
   protected $entityTypeManager;
 
   /**
