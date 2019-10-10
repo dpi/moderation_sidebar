@@ -455,8 +455,9 @@ class ModerationSidebarController extends ControllerBase {
         $latest_translation = FALSE;
         $entity_has_translation = array_key_exists($langcode, $translation_languages);
 
-        // This would happen when a translation only has a draft revision.
-        if (!$entity_has_translation && $latest_revision) {
+        // This would happen when a translation only has a draft revision and
+        // make sure we do not list removed translations.
+        if (!$entity_has_translation && $latest_revision && !$latest_revision->wasDefaultRevision()) {
           $latest_translation = TRUE;
         }
 
