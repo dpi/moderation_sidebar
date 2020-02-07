@@ -14,6 +14,11 @@ class ModerationSidebarTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
+  protected $defaultTheme = 'stark';
+
+  /**
+   * {@inheritdoc}
+   */
   public static $modules = [
     'toolbar',
     'moderation_sidebar',

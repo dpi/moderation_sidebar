@@ -450,7 +450,7 @@ class ModerationSidebarController extends ControllerBase {
           }
         }
         else {
-          $latest_revision = $this->moderationInformation->getLatestRevision($entity_type_id, $entity->id())->getTranslation($langcode);
+          $latest_revision = $storage->loadRevision($storage->getLatestRevisionId($entity->id()))->getTranslation($langcode);
         }
         $latest_translation = FALSE;
         $entity_has_translation = array_key_exists($langcode, $translation_languages);
