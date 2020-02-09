@@ -450,8 +450,9 @@ class ModerationSidebarController extends ControllerBase {
         }
         // Get the latest revision for the current $langcode.
         if ($storage instanceof TranslatableRevisionableStorageInterface) {
+          $latest_revision = NULL;
           $latest_revision_id = $storage->getLatestTranslationAffectedRevisionId($entity->id(), $langcode);
-          if ($latest_revision = $storage->loadRevision($latest_revision_id)) {
+          if ($latest_revision_id && $latest_revision = $storage->loadRevision($latest_revision_id)) {
             $latest_revision = $latest_revision->getTranslation($langcode);
           }
         }
