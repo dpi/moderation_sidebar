@@ -2,6 +2,7 @@
 
 namespace Drupal\moderation_sidebar\Controller;
 
+use Drupal\Core\Access\AccessResult;
 use Drupal\Component\Utility\Xss;
 use Drupal\content_moderation\ModerationInformation;
 use Drupal\Core\Controller\ControllerBase;
@@ -601,7 +602,7 @@ class ModerationSidebarController extends ControllerBase {
             '#type' => 'link',
             '#url' => $tab['#link']['url'],
             '#attributes' => $attributes,
-            '#access' => $tab['#access'],
+            '#access' => isset($tab['#access']) ? $tab['#access'] : AccessResult::neutral(),
           ];
         }
       }
