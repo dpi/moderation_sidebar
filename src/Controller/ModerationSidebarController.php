@@ -182,13 +182,19 @@ class ModerationSidebarController extends ControllerBase {
     ];
 
     if ($entity instanceof RevisionLogInterface) {
-      $user = $entity->getRevisionUser();
-      $time = (int) $entity->getRevisionCreationTime();
-      $time_pretty = $this->getPrettyTime($time);
-      $build['info']['#revision_author'] = $user->getDisplayName();
-      $build['info']['#revision_author_link'] = $user->toLink()->toRenderable();
-      $build['info']['#revision_time'] = $time;
-      $build['info']['#revision_time_pretty'] = $time_pretty;
+
+      // Entity could implement RevisionLogInterface, but not having a revision
+      // user or creation time set, i.e. taxonomy_term created before 8.7.0.
+      // @see https://www.drupal.org/node/2897789
+      if ($user = $entity->getRevisionUser()) {
+        $build['info']['#revision_author'] = $user->getDisplayName();
+        $build['info']['#revision_author_link'] = $user->toLink()->toRenderable();
+      }
+      if ($time = (int) $entity->getRevisionCreationTime()) {
+        $time_pretty = $this->getPrettyTime($time);
+        $build['info']['#revision_time'] = $time;
+        $build['info']['#revision_time_pretty'] = $time_pretty;
+      }
     }
 
     $build['actions'] = [
