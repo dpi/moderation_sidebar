@@ -112,7 +112,7 @@ class ModerationSidebarController extends ControllerBase {
     $route_match = new CurrentRouteMatch($fake_request_stack);
 
     $local_task_manager = new LocalTaskManager(
-      $container->get('controller_resolver'),
+      $container->get('http_kernel.controller.argument_resolver'),
       $fake_request_stack,
       $route_match,
       $container->get('router.route_provider'),

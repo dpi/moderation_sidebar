@@ -4,7 +4,10 @@ namespace Drupal\Tests\moderation_sidebar\Functional;
 
 use Drupal\Tests\BrowserTestBase;
 use Drupal\Tests\content_moderation\Traits\ContentModerationTestTrait;
-use Drupal\Tests\taxonomy\Functional\TaxonomyTestTrait;
+use Drupal\Tests\taxonomy\Traits\TaxonomyTestTrait;
+if (!trait_exists('\Drupal\Tests\taxonomy\Traits\TaxonomyTestTrait')) {
+  class_alias('\Drupal\Tests\taxonomy\Functional\TaxonomyTestTrait', '\Drupal\Tests\taxonomy\Traits\TaxonomyTestTrait');
+}
 
 /**
  * Contains test for the toolbar state label for taxonomy_term.
