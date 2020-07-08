@@ -88,7 +88,7 @@ class ModerationSidebarTest extends BrowserTestBase {
     // Set a baseline, make sure toolbar button exists.
     $this->assertSession()->elementExists('css', '.moderation-sidebar-toolbar-tab a');
 
-    // There is no cache tag on State so invalidate the previously renderd page
+    // There is no cache tag on State so invalidate the previously rendered page
     // manually:
     Cache::invalidateTags(['rendered']);
 
