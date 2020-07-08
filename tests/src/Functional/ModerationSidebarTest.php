@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\moderation_sidebar\Functional;
 
+use Drupal\Core\Url;
 use Drupal\entity_test\Entity\EntityTestMulRevPub;
 use Drupal\Tests\BrowserTestBase;
 use Drupal\Tests\content_moderation\Traits\ContentModerationTestTrait;
@@ -63,7 +64,11 @@ class ModerationSidebarTest extends BrowserTestBase {
     // Make sure the button is where we expect it.
     $toolbarItem = $this->assertSession()->elementExists('css', '.moderation-sidebar-toolbar-tab a');
     // Make sure the button has the right attributes.
-    $this->assertEquals(sprintf('/moderation-sidebar/entity_test_mulrevpub/%s/latest', $entity->id()), $toolbarItem->getAttribute('href'));
+    $url = Url::fromRoute('moderation_sidebar.sidebar_latest', [
+      'entity_type' => $entity->getEntityTypeId(),
+      'entity' => $entity->id(),
+    ]);
+    $this->assertEquals($url->toString(), $toolbarItem->getAttribute('href'));
     $this->assertEquals('Tasks', $toolbarItem->getText());
   }
 
