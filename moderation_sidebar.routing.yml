@@ -5,7 +5,7 @@ moderation_sidebar.sidebar:
     _title_callback: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::title'
   requirements:
     _permission: 'use moderation sidebar'
-    _entity_access: 'entity.view'
+    _entity_access: 'entity.moderation-sidebar'
   options:
     parameters:
       entity:
@@ -18,7 +18,7 @@ moderation_sidebar.sidebar_latest:
     _title_callback: '\Drupal\moderation_sidebar\Controller\ModerationSidebarController::title'
   requirements:
     _permission: 'use moderation sidebar'
-    _entity_access: 'entity.view'
+    _entity_access: 'entity.moderation-sidebar'
   options:
     parameters:
       entity:

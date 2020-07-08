@@ -1,0 +1,6 @@
+name: 'Moderation Sidebar Access Test'
+type: module
+description: 'Provides ability to alter entity access.'
+package: Testing
+dependencies:
+  - drupal:moderation_sidebar

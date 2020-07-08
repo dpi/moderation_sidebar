@@ -7,8 +7,22 @@
 
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityPublishedInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
+use Drupal\moderation_sidebar\ModerationSidebarEntityHooks;
+
+/**
+ * Implements hook_entity_access().
+ *
+ * @see \Drupal\moderation_sidebar\ModerationSidebarEntityHooks::entityAccess
+ */
+
+function moderation_sidebar_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+  return \Drupal::classResolver(ModerationSidebarEntityHooks::class)
+    ->entityAccess($entity, $operation, $account);
+}
 
 /**
  * Implements hook_toolbar().
@@ -32,9 +46,16 @@ function moderation_sidebar_toolbar() {
 
   /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
   $current_route = \Drupal::routeMatch();
-  $entity = $current_route->getParameter('node') ?: $current_route->getParameter('taxonomy_term');
+  $entity = NULL;
+  foreach ($current_route->getParameters() as $param) {
+    if ($param instanceof ContentEntityInterface) {
+      $entity = $param;
+      // Stop at the first found instance.
+      break;
+    }
+  }
 
-  if (!($entity instanceof ContentEntityInterface) || $admin_context->isAdminRoute()) {
+  if (!($entity instanceof ContentEntityInterface) || !($entity->getEntityType()->isRevisionable()) || $admin_context->isAdminRoute()) {
     $cacheability->applyTo($items['moderation_sidebar']);
     return $items;
   }
@@ -56,6 +77,12 @@ function moderation_sidebar_toolbar() {
   }
   else {
     $url = Url::fromRoute('moderation_sidebar.sidebar_latest', $params);
+  }
+
+  // Dont show the item if the user doesnt have access.
+  if (!$url->access()) {
+    $cacheability->applyTo($items['moderation_sidebar']);
+    return $items;
   }
 
   // Grab the state label for the quick hover feature.

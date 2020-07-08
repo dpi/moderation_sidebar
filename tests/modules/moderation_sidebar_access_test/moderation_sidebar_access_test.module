@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * @file
+ * Hooks for moderation_sidebar_access_test.module.
+ */
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Session\AccountInterface;
+
+/**
+ * Implements hook_entity_access().
+ */
+function moderation_sidebar_access_test_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+  // Inspired by \entity_test_entity_access().
+  $key = sprintf('moderation_sidebar_access_test_entity_access_forbidden.%s.%s', $operation, $entity->id());
+  $condition = \Drupal::state()->get($key);
+  return AccessResult::forbiddenIf(isset($condition))->setCacheMaxAge(0);
+}
