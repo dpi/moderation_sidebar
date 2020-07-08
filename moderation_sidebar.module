@@ -5,8 +5,10 @@
  * Contains hook implementations for moderation_sidebar.
  */
 
+use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityPublishedInterface;
 use Drupal\Core\Url;
 
@@ -20,7 +22,9 @@ function moderation_sidebar_toolbar() {
   $items['moderation_sidebar'] = [];
   $cacheability = (new CacheableMetadata())
     ->addCacheContexts(['route'])
-    ->addCacheContexts(['user.permissions']);
+    ->addCacheContexts(['user.permissions'])
+    // @see moderation_sidebar_entity_revision_delete().
+    ->addCacheTags(['moderation_sidebar']);
 
   if (!\Drupal::currentUser()->hasPermission('use moderation sidebar')) {
     $cacheability->applyTo($items['moderation_sidebar']);
@@ -150,4 +154,19 @@ function moderation_sidebar_theme() {
       ],
     ],
   ];
+}
+
+/**
+ * Implements hook_entity_revision_delete().
+ */
+function moderation_sidebar_entity_revision_delete(EntityInterface $entity) {
+  /** @var \Drupal\content_moderation\ModerationInformation $moderation_information */
+  $moderation_information = \Drupal::service('content_moderation.moderation_information');
+  // Only act on moderated entities.
+  if (!$moderation_information->isModeratedEntity($entity)) {
+    return;
+  }
+  // Manually invalidate our custom tag on revision delete to ensure we aren't
+  // displaying stale labels.
+  Cache::invalidateTags(['moderation_sidebar']);
 }
